@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pulizie Urbane – Castel di Lama</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F4F2ED;--surface:#fff;--border:#E0DCD4;
+  --text:#1A1816;--muted:#7A756E;
+  --green:#1E6B3C;--gl:#E6F3EC;--gm:#9DCFB0;
+  --red:#B83025;--rl:#FDECEA;--rm:#F5A39A;
+  --orange:#C94E00;--ol:#FDF0E6;--om:#F5B07A;
+  --blue:#1A4F7A;--bl:#E6F0FA;
+  --panel:330px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+header{background:var(--green);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+header h1{font-size:14px;font-weight:600}
+.hdate{font-size:11px;opacity:.65;margin-left:auto;font-family:'DM Mono',monospace}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden;position:relative}
+#map{flex:1;z-index:1}
+
+/* PANEL */
+.panel{width:var(--panel);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:500;overflow:hidden}
+.ptabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.ptab{flex:1;padding:11px 4px;font-size:12px;font-weight:500;text-align:center;cursor:pointer;color:var(--muted);border:none;border-bottom:2.5px solid transparent;margin-bottom:-1px;background:none;font-family:inherit;transition:.15s}
+.ptab.on{color:var(--green);border-bottom-color:var(--green)}
+.pbody{flex:1;overflow-y:auto;padding:14px 13px}
+
+/* HINT */
+.hint{background:var(--gl);border:1px solid var(--gm);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--green);line-height:1.55;margin-bottom:12px}
+.hint b{display:block;font-size:13px;margin-bottom:2px}
+
+/* STEP */
+.step-box{border:1px solid var(--border);border-radius:8px;padding:11px 12px;margin-bottom:10px;background:var(--bg)}
+.step-num{display:inline-block;background:var(--green);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;text-align:center;line-height:18px;margin-right:6px;flex-shrink:0}
+.step-title{font-size:13px;font-weight:600;display:flex;align-items:center;margin-bottom:6px}
+.step-body{font-size:12px;color:var(--muted);line-height:1.55;padding-left:24px}
+
+/* MATCH LIST */
+.mlabel{font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.match-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;cursor:pointer;transition:.12s;background:var(--bg)}
+.match-item:hover,.match-item.sel{border-color:var(--gm);background:var(--gl)}
+.match-item.sel .mi-name{color:var(--green)}
+.mi-name{font-size:13px;font-weight:500;flex:1;line-height:1.3}
+.mi-type{font-size:10px;color:var(--muted);margin-top:1px}
+.mi-arr{font-size:18px;color:var(--muted);flex-shrink:0}
+
+/* LOADER */
+.loader{padding:16px;text-align:center;font-size:12px;color:var(--muted);display:none}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* FORM */
+.fg{margin-bottom:11px}
+.fl{display:block;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:.13s}
+input:focus,select:focus,textarea:focus{border-color:var(--green);background:#fff}
+textarea{resize:vertical;min-height:52px}
+
+/* OPERATORI */
+.ops-grid{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.op{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;background:var(--bg);transition:.12s;user-select:none}
+.op:hover{border-color:var(--gm)}
+.op.on{background:var(--gl);border-color:var(--gm);color:var(--green)}
+.op input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;pointer-events:none}
+
+/* BOTTONI */
+.btn{display:block;width:100%;padding:10px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.13s;text-align:center}
+.btn-p{background:var(--green);color:#fff}.btn-p:hover{background:#185730}
+.btn-p:disabled{opacity:.4;pointer-events:none}
+.btn-g{background:transparent;border:1px solid var(--border);color:var(--muted);margin-top:6px}
+.btn-g:hover{background:var(--bg)}
+
+/* LAVORI */
+.lcard{border:1px solid var(--border);border-radius:9px;padding:11px 12px;background:var(--surface);margin-bottom:8px}
+.lh{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+.lname{font-size:13px;font-weight:600;flex:1;line-height:1.3}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0}
+.br{background:var(--rl);color:var(--red)}
+.bo{background:var(--ol);color:var(--orange)}
+.bg{background:var(--gl);color:var(--green)}
+.lmeta{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:5px}
+.lnota{font-size:11px;color:var(--orange);font-style:italic}
+.lacts{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.lb{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;font-family:inherit;transition:.1s}
+.lb:hover{filter:brightness(.9)}
+.lbg{background:var(--gl);border-color:var(--gm);color:var(--green)}
+.lbo{background:var(--ol);border-color:var(--om);color:var(--orange)}
+.lbr{background:var(--rl);border-color:var(--rm);color:var(--red)}
+.lbm{background:var(--bg);border-color:var(--border);color:var(--muted)}
+.empty{text-align:center;padding:28px 10px;color:var(--muted);font-size:12px;line-height:1.6}
+
+/* LEGENDA */
+.legend{position:absolute;bottom:16px;left:10px;z-index:900;background:rgba(255,255,255,.95);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none}
+.li{display:flex;align-items:center;gap:7px;padding:2px 0}
+.lc{width:14px;height:5px;border-radius:2px}
+
+/* MODAL */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:4000;display:none;align-items:center;justify-content:center;padding:16px}
+.mover.on{display:flex}
+.mbox{background:#fff;border-radius:12px;padding:22px;width:100%;max-width:370px}
+.mbox h3{font-size:15px;font-weight:600;margin-bottom:3px}
+.msub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.macts{display:flex;gap:8px;margin-top:12px}
+.macts button{flex:1}
+
+/* MOBILE */
+@media(max-width:640px){
+  :root{--panel:100%}
+  .layout{flex-direction:column}
+  #map{height:44dvh;flex:none}
+  .panel{width:100%;flex:1;border-left:none;border-top:1px solid var(--border)}
+  .legend{bottom:6px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+  <h1>Pulizie Urbane – Castel di Lama</h1>
+  <span class="hdate" id="hdate"></span>
+</header>
+
+<div class="layout">
+  <div id="map"></div>
+
+  <div class="panel">
+    <div class="ptabs">
+      <button class="ptab on" data-tab="prog">Programma</button>
+      <button class="ptab" data-tab="lavori">Lavori <span id="bcnt" style="background:var(--green);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span></button>
+    </div>
+
+    <!-- TAB PROGRAMMA -->
+    <div class="pbody" id="tab-prog">
+
+      <div class="hint" id="hint-main">
+        <b>✏️ Disegna la zona da pulire</b>
+        Usa gli strumenti sulla mappa: <b>linea</b> per una strada o porzione, <b>poligono</b> per una piazza o parco. Il programma riconoscerà automaticamente la zona reale.
+      </div>
+
+      <div class="loader" id="loader"><span class="spin"></span>Ricerca la zona su OpenStreetMap…</div>
+
+      <!-- step 2: elenco match -->
+      <div id="area-match" style="display:none">
+        <div class="mlabel">Zone trovate — seleziona quella giusta</div>
+        <div id="match-list"></div>
+        <button class="btn btn-g" id="btn-ridisegna" onclick="resetDisegno()">↩ Ridisegna</button>
+      </div>
+
+      <!-- step 3: form -->
+      <div id="area-form" style="display:none">
+        <div class="hint" style="background:var(--bl);border-color:#9FC6E8;color:var(--blue);margin-bottom:12px" id="hint-sel"></div>
+        <div class="fg"><label class="fl">Nome zona</label><input type="text" id="f-nome"></div>
+        <div class="fg"><label class="fl">Data</label><input type="date" id="f-data"></div>
+        <div class="fg">
+          <label class="fl">Tipo intervento</label>
+          <select id="f-tipo">
+            <option>Raccolta rifiuti</option>
+            <option>Spazzamento stradale</option>
+            <option>Pulizia parco / area verde</option>
+            <option>Diserbo marciapiedi</option>
+            <option>Svuotamento cestini</option>
+            <option>Pulizia piazza</option>
+            <option>Altro</option>
+          </select>
+        </div>
+        <div class="mlabel">Operatori assegnati</div>
+        <div class="ops-grid" id="ops-grid"></div>
+        <div class="fg"><label class="fl">Note</label><textarea id="f-note" placeholder="Priorità, attrezzatura…"></textarea></div>
+        <button class="btn btn-p" id="btn-salva" onclick="salvaLavoro()">💾 Salva intervento</button>
+        <button class="btn btn-g" onclick="resetDisegno()">↩ Ricomincia</button>
+      </div>
+
+    </div>
+
+    <!-- TAB LAVORI -->
+    <div class="pbody" id="tab-lavori" style="display:none">
+      <div class="mlabel">Interventi pianificati</div>
+      <div id="lavori-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="lc" style="background:#B83025"></div>Da fare</div>
+  <div class="li"><div class="lc" style="background:#E67E22"></div>Parziale</div>
+  <div class="li"><div class="lc" style="background:#1E6B3C"></div>Completato</div>
+</div>
+
+<!-- MODAL CONSUNTIVO -->
+<div class="mover" id="modal">
+  <div class="mbox">
+    <h3>Chiudi intervento</h3>
+    <div class="msub" id="msub"></div>
+    <div class="fg"><label class="fl">Stato a fine giornata</label>
+      <select id="mstato">
+        <option value="green">✅ Completato</option>
+        <option value="orange">⚠️ Parzialmente completato</option>
+      </select>
+    </div>
+    <div id="mnote-area" style="display:none">
+      <div class="fg"><label class="fl">Cosa manca ancora?</label>
+        <textarea id="mnota" placeholder="Descrivi cosa rimane…"></textarea>
+      </div>
+    </div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-p" onclick="salvaConsuntivo()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script>
+// ── DATI ─────────────────────────────────────────────────────────────────────
+const OPERATORI=[
+  {id:'a',nome:'Marco Rossi'},{id:'b',nome:'Laura Bianchi'},
+  {id:'c',nome:'Giuseppe Ferri'},{id:'d',nome:'Anna Conti'},{id:'e',nome:'Paolo Marini'}
+];
+let lavori=JSON.parse(localStorage.getItem('cdl3')||'[]');
+let overlayLayers={};
+let selectedGeom=null;   // geometria OSM confermata
+let selectedName='';
+let selectedIsArea=false;
+let drawnLayer=null;     // layer disegnato dall'utente (temporaneo)
+let modalId=null;
+
+// ── MAPPA ────────────────────────────────────────────────────────────────────
+const map=L.map('map').setView([42.8667,13.7500],15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap',maxZoom:19
+}).addTo(map);
+
+const drawn=new L.FeatureGroup().addTo(map);
+
+// Controlli disegno: solo linea e poligono
+const drawCtrl=new L.Control.Draw({
+  draw:{
+    polyline:{shapeOptions:{color:'#1A4F7A',weight:4,dashArray:'6,4'},metric:true},
+    polygon:{shapeOptions:{color:'#1A4F7A',fillOpacity:.12,weight:3},showArea:false},
+    rectangle:false,circle:false,marker:false,circlemarker:false
+  },
+  edit:{featureGroup:drawn,remove:false}
+});
+map.addControl(drawCtrl);
+
+// ── EVENTO DISEGNO COMPLETATO ────────────────────────────────────────────────
+map.on(L.Draw.Event.CREATED,async e=>{
+  // Rimuovi eventuale layer precedente
+  drawn.clearLayers();
+  drawnLayer=e.layer;
+  drawn.addLayer(drawnLayer);
+
+  // Calcola bounding box del disegno
+  const bounds=drawnLayer.getBounds();
+  const isPolyline=(e.layerType==='polyline');
+
+  showLoader(true);
+  hideAll();
+
+  try{
+    const matches=await cercaOSM(bounds, isPolyline, drawnLayer);
+    showLoader(false);
+    if(!matches.length){
+      document.getElementById('hint-main').style.display='block';
+      document.getElementById('hint-main').innerHTML='<b>⚠️ Nessuna zona trovata</b>Nessuna strada o area corrisponde al disegno. Prova a disegnare più vicino alla zona.';
+      drawn.clearLayers();
+      return;
+    }
+    mostraMatch(matches, isPolyline);
+  }catch(err){
+    showLoader(false);
+    document.getElementById('hint-main').style.display='block';
+    document.getElementById('hint-main').innerHTML='<b>⚠️ Errore connessione</b>Impossibile contattare OpenStreetMap. Controlla la rete e riprova.';
+    console.error(err);
+    drawn.clearLayers();
+  }
+});
+
+// ── QUERY OVERPASS ───────────────────────────────────────────────────────────
+async function cercaOSM(bounds, isPolyline, drawnLayer){
+  const S=bounds.getSouth().toFixed(5), W=bounds.getWest().toFixed(5);
+  const N=bounds.getNorth().toFixed(5), E=bounds.getEast().toFixed(5);
+
+  // Espandi leggermente il bbox per trovare strade marginali
+  const pad=0.0005;
+  const bbox=`${(+S-pad).toFixed(5)},${(+W-pad).toFixed(5)},${(+N+pad).toFixed(5)},${(+E+pad).toFixed(5)}`;
+
+  let query;
+  if(isPolyline){
+    // Per linee: cerca strade che passano per quella zona
+    query=`[out:json][timeout:20];(
+      way["highway"]["name"](${bbox});
+      way["highway"]["ref"](${bbox});
+    );out geom qt;`;
+  } else {
+    // Per poligoni: cerca aree (parchi, piazze, strade large)
+    query=`[out:json][timeout:20];(
+      way["leisure"~"park|garden|pitch|playground"](${bbox});
+      way["landuse"~"recreation_ground|grass|village_green"](${bbox});
+      way["place"~"square"](${bbox});
+      way["amenity"~"parking|marketplace"](${bbox});
+      way["highway"]["name"](${bbox});
+    );out geom qt;`;
+  }
+
+  const url='https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query);
+  const res=await fetch(url);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const data=await res.json();
+
+  // Filtra e punteggia gli elementi in base alla sovrapposizione col disegno
+  const candidates=data.elements.filter(el=>el.tags?.name&&el.geometry?.length>1);
+
+  if(!candidates.length) return [];
+
+  // Calcola punteggio per ognuno: quanti nodi del way cadono ENTRO il bbox disegnato
+  const drawnBounds=drawnLayer.getBounds().pad(0.0005);
+  const scored=candidates.map(el=>{
+    let hits=0;
+    el.geometry.forEach(p=>{
+      if(drawnBounds.contains([p.lat,p.lon])) hits++;
+    });
+    const score=hits/el.geometry.length;
+    return {...el,_score:score,_hits:hits};
+  }).filter(el=>el._hits>0);
+
+  // Deduplicazione per nome, tieni quello col punteggio più alto
+  const byName={};
+  scored.forEach(el=>{
+    const n=el.tags.name;
+    if(!byName[n]||el._score>byName[n]._score) byName[n]=el;
+  });
+
+  // Ordina per score, prendi i top 5
+  return Object.values(byName).sort((a,b)=>b._score-a._score).slice(0,5);
+}
+
+// ── MOSTRA RISULTATI ─────────────────────────────────────────────────────────
+let matchElements=[];
+function mostraMatch(matches, isPolyline){
+  matchElements=matches;
+  const list=document.getElementById('match-list');
+  list.innerHTML=matches.map((el,i)=>{
+    const tipo=getTipo(el,isPolyline);
+    const pct=Math.round(el._score*100);
+    return `<div class="match-item" id="mi-${i}" onclick="selezionaMatch(${i})">
+      <div style="flex:1">
+        <div class="mi-name">${el.tags.name}</div>
+        <div class="mi-type">${tipo} · corrispondenza ${pct}%</div>
+      </div>
+      <div class="mi-arr">›</div>
+    </div>`;
+  }).join('');
+  document.getElementById('area-match').style.display='block';
+}
+
+function getTipo(el, isPolyline){
+  const t=el.tags||{};
+  if(t.leisure==='park'||t.leisure==='garden') return 'Parco / Giardino';
+  if(t.leisure==='pitch') return 'Campo sportivo';
+  if(t.place==='square') return 'Piazza';
+  if(t.landuse) return 'Area verde';
+  if(t.amenity==='parking') return 'Parcheggio';
+  const hm={residential:'Strada residenziale',primary:'Via principale',secondary:'Via secondaria',
+    tertiary:'Via terziaria',service:'Servizio',footway:'Pedonale',path:'Sentiero',
+    cycleway:'Ciclabile',unclassified:'Strada'};
+  return hm[t.highway]||'Strada';
+}
+
+// ── SELEZIONE MATCH ──────────────────────────────────────────────────────────
+function selezionaMatch(i){
+  document.querySelectorAll('.match-item').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('mi-'+i).classList.add('sel');
+
+  const el=matchElements[i];
+  const isArea=!!(el.tags.leisure||el.tags.landuse||(el.tags.place==='square')||el.tags.amenity==='parking');
+
+  // Regolarizza: usa la geometria OSM reale al posto del disegno
+  drawn.clearLayers();
+  const col=isArea?'#1E6B3C':'#1A4F7A';
+  const coords=el.geometry.map(p=>[p.lat,p.lon]);
+  let regularLayer;
+  if(isArea){
+    regularLayer=L.polygon(coords,{color:col,fillColor:col,fillOpacity:.18,weight:3});
+  } else {
+    regularLayer=L.polyline(coords,{color:col,weight:5,opacity:.8});
+  }
+  drawn.addLayer(regularLayer);
+  map.fitBounds(regularLayer.getBounds(),{padding:[50,50]});
+
+  selectedGeom=el.geometry;
+  selectedName=el.tags.name;
+  selectedIsArea=isArea;
+
+  // Nascondi lista e mostra form
+  document.getElementById('area-match').style.display='none';
+  mostraForm(el, isArea);
+}
+
+// ── FORM ─────────────────────────────────────────────────────────────────────
+function mostraForm(el, isArea){
+  document.getElementById('hint-sel').innerHTML=`<b>✅ ${el.tags.name}</b>${getTipo(el,!isArea)} — geometria adattata alla mappa reale`;
+  document.getElementById('f-nome').value=el.tags.name;
+  document.getElementById('f-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-tipo').value=isArea?'Pulizia parco / area verde':'Spazzamento stradale';
+
+  const grid=document.getElementById('ops-grid');
+  grid.innerHTML=OPERATORI.map(op=>`
+    <label class="op" id="op-${op.id}" onclick="toggleOp('${op.id}')">
+      <input type="checkbox" value="${op.id}"> ${op.nome}
+    </label>`).join('');
+
+  document.getElementById('f-note').value='';
+  document.getElementById('area-form').style.display='block';
+}
+
+function toggleOp(id){
+  const el=document.getElementById('op-'+id);
+  const cb=el.querySelector('input');
+  cb.checked=!cb.checked;
+  el.classList.toggle('on',cb.checked);
+}
+
+// ── SALVA LAVORO ─────────────────────────────────────────────────────────────
+function salvaLavoro(){
+  const nome=document.getElementById('f-nome').value.trim();
+  const data=document.getElementById('f-data').value;
+  if(!nome||!data){alert('Inserisci nome e data.');return;}
+
+  const ops=[...document.querySelectorAll('.op input:checked')]
+    .map(cb=>OPERATORI.find(o=>o.id===cb.value)?.nome).filter(Boolean);
+
+  const lav={
+    id:'lav_'+Date.now(), nome, data,
+    tipo:document.getElementById('f-tipo').value,
+    note:document.getElementById('f-note').value.trim(),
+    operatori:ops, stato:'red', notaMancante:'',
+    geom:selectedGeom, isArea:selectedIsArea
+  };
+
+  lavori.push(lav);
+  saveStorage();
+  drawn.clearLayers();
+  disegnaLavoro(lav);
+  renderLavori();
+  resetDisegno();
+  switchTab('lavori');
+}
+
+// ── OVERLAY LAVORI ────────────────────────────────────────────────────────────
+function colore(s){return s==='green'?'#1E6B3C':s==='orange'?'#E67E22':'#B83025';}
+function disegnaLavoro(lav){
+  if(!lav.geom?.length) return;
+  const col=colore(lav.stato);
+  const coords=lav.geom.map(p=>[p.lat,p.lon??p.lng]);
+  let layer;
+  if(lav.isArea){
+    layer=L.polygon(coords,{color:col,fillColor:col,fillOpacity:.22,weight:3});
+  } else {
+    layer=L.polyline(coords,{color:col,weight:6,opacity:.8});
+  }
+  layer.bindTooltip(`<b>${lav.nome}</b><br>${lav.tipo}<br>📅 ${lav.data}`,{sticky:true});
+  layer.addTo(map);
+  overlayLayers[lav.id]=layer;
+}
+function aggiornaColore(lav){
+  const l=overlayLayers[lav.id]; if(!l) return;
+  const col=colore(lav.stato);
+  if(l.setStyle) l.setStyle({color:col,fillColor:col});
+}
+function renderAllOverlays(){
+  Object.values(overlayLayers).forEach(l=>map.removeLayer(l));
+  Object.keys(overlayLayers).forEach(k=>delete overlayLayers[k]);
+  lavori.forEach(disegnaLavoro);
+}
+
+// ── RENDER LAVORI ─────────────────────────────────────────────────────────────
+function renderLavori(){
+  document.getElementById('bcnt').textContent=lavori.length;
+  const el=document.getElementById('lavori-list');
+  if(!lavori.length){
+    el.innerHTML='<div class="empty">Nessun intervento ancora.<br>Disegna una zona sulla mappa per iniziare.</div>';
+    return;
+  }
+  el.innerHTML=lavori.slice().reverse().map(lav=>{
+    const bc=lav.stato==='green'?'bg':lav.stato==='orange'?'bo':'br';
+    const bl=lav.stato==='green'?'Completato':lav.stato==='orange'?'Parziale':'Da fare';
+    return `<div class="lcard">
+      <div class="lh"><div class="lname">${lav.nome}</div><span class="badge ${bc}">${bl}</span></div>
+      <div class="lmeta">📅 ${lav.data} · ${lav.tipo}<br>👷 ${lav.operatori.join(', ')||'—'}</div>
+      ${lav.note?`<div style="font-size:11px;color:var(--muted);margin-bottom:3px">📝 ${lav.note}</div>`:''}
+      ${lav.notaMancante?`<div class="lnota">⚠️ Manca: ${lav.notaMancante}</div>`:''}
+      <div class="lacts">
+        <button class="lb lbm" onclick="zoomLav('${lav.id}')">🔍 Mappa</button>
+        ${lav.stato==='red'
+          ?`<button class="lb lbg" onclick="apriModal('${lav.id}')">Chiudi lavoro</button>`
+          :`<button class="lb lbo" onclick="apriModal('${lav.id}')">Modifica stato</button>`}
+        <button class="lb lbr" onclick="elimina('${lav.id}')">Elimina</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function zoomLav(id){
+  const l=overlayLayers[id];
+  if(l&&l.getBounds) map.fitBounds(l.getBounds(),{padding:[60,60]});
+  switchTab('prog');
+  resetDisegno();
+}
+function elimina(id){
+  if(!confirm('Eliminare?')) return;
+  const l=overlayLayers[id]; if(l) map.removeLayer(l);
+  delete overlayLayers[id];
+  lavori=lavori.filter(x=>x.id!==id);
+  saveStorage(); renderLavori();
+}
+
+// ── MODAL CONSUNTIVO ──────────────────────────────────────────────────────────
+function apriModal(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  modalId=id;
+  document.getElementById('msub').textContent=lav.nome+' · '+lav.data;
+  document.getElementById('mstato').value=lav.stato==='green'?'green':'orange';
+  document.getElementById('mnota').value=lav.notaMancante||'';
+  toggleMnote();
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+function toggleMnote(){
+  document.getElementById('mnote-area').style.display=document.getElementById('mstato').value==='orange'?'block':'none';
+}
+document.getElementById('mstato').addEventListener('change',toggleMnote);
+function salvaConsuntivo(){
+  const lav=lavori.find(l=>l.id===modalId); if(!lav) return;
+  lav.stato=document.getElementById('mstato').value;
+  lav.notaMancante=lav.stato==='orange'?document.getElementById('mnota').value:'';
+  saveStorage(); renderLavori(); aggiornaColore(lav); closeModal();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function showLoader(v){document.getElementById('loader').style.display=v?'block':'none';}
+function hideAll(){
+  document.getElementById('hint-main').style.display='none';
+  document.getElementById('area-match').style.display='none';
+  document.getElementById('area-form').style.display='none';
+}
+function resetDisegno(){
+  drawn.clearLayers();
+  selectedGeom=null; selectedName=''; selectedIsArea=false;
+  document.getElementById('area-match').style.display='none';
+  document.getElementById('area-form').style.display='none';
+  document.getElementById('hint-main').style.display='block';
+  document.getElementById('hint-main').innerHTML='<b>✏️ Disegna la zona da pulire</b>Usa gli strumenti sulla mappa: <b>linea</b> per una strada o porzione, <b>poligono</b> per una piazza o parco.';
+}
+function saveStorage(){localStorage.setItem('cdl3',JSON.stringify(lavori));}
+function switchTab(t){
+  document.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
+  document.getElementById('tab-prog').style.display=t==='prog'?'':'none';
+  document.getElementById('tab-lavori').style.display=t==='lavori'?'':'none';
+}
+document.querySelectorAll('.ptab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+document.getElementById('hdate').textContent=new Date().toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+renderLavori();
+renderAllOverlays();
+</script>
+</body>
+</html>
