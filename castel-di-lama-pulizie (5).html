@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pulizie Urbane – Castel di Lama</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F4F2ED;--sur:#fff;--brd:#E0DCD4;
+  --txt:#1A1816;--mut:#7A756E;
+  --gr:#1E6B3C;--gl:#E6F3EC;--gm:#9DCFB0;
+  --rd:#B83025;--rl:#FDECEA;--rm:#F5A39A;
+  --or:#C94E00;--ol:#FDF0E6;--om:#F5B07A;
+  --bl:#1A4F7A;--bll:#E6F0FA;
+  --pan:340px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--gr);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+header h1{font-size:14px;font-weight:600}
+.hd{font-size:11px;opacity:.65;margin-left:auto;font-family:'DM Mono',monospace}
+.layout{display:flex;flex:1;overflow:hidden;position:relative}
+#map{flex:1;z-index:1}
+.panel{width:var(--pan);background:var(--sur);border-left:1px solid var(--brd);display:flex;flex-direction:column;z-index:500;overflow:hidden}
+.ptabs{display:flex;border-bottom:1px solid var(--brd);flex-shrink:0}
+.ptab{flex:1;padding:11px 4px;font-size:12px;font-weight:500;text-align:center;cursor:pointer;color:var(--mut);border:none;border-bottom:2.5px solid transparent;margin-bottom:-1px;background:none;font-family:inherit;transition:.15s}
+.ptab.on{color:var(--gr);border-bottom-color:var(--gr)}
+.pbody{flex:1;overflow-y:auto;padding:14px 13px}
+.hint{background:var(--gl);border:1px solid var(--gm);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gr);line-height:1.55;margin-bottom:12px}
+.hint b{display:block;font-size:13px;margin-bottom:2px}
+.hint.warn{background:#FFF8E6;border-color:#F5C842;color:#7A5800}
+.hint.info{background:var(--bll);border-color:#9FC6E8;color:var(--bl)}
+.hint.orange{background:var(--ol);border-color:var(--om);color:var(--or)}
+.loader{padding:16px;text-align:center;font-size:12px;color:var(--mut);display:none}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--brd);border-top-color:var(--gr);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.mlabel{font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--mut);margin-bottom:7px}
+.match-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--brd);border-radius:7px;margin-bottom:6px;cursor:pointer;transition:.12s;background:var(--bg)}
+.match-item:hover,.match-item.sel{border-color:var(--gm);background:var(--gl)}
+.match-item.sel .mi-n{color:var(--gr);font-weight:600}
+.mi-n{font-size:13px;font-weight:500;flex:1;line-height:1.3}
+.mi-t{font-size:10px;color:var(--mut);margin-top:1px}
+.fg{margin-bottom:11px}
+.fl{display:block;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--txt);outline:none;transition:.13s}
+input:focus,select:focus,textarea:focus{border-color:var(--gr);background:#fff}
+textarea{resize:vertical;min-height:52px}
+.ops{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.op{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;cursor:pointer;font-size:12px;background:var(--bg);transition:.12s;user-select:none}
+.op:hover{border-color:var(--gm)}
+.op.on{background:var(--gl);border-color:var(--gm);color:var(--gr)}
+.op input[type=checkbox]{accent-color:var(--gr);width:14px;height:14px;pointer-events:none;flex-shrink:0}
+.btn{display:block;width:100%;padding:10px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.13s;text-align:center}
+.btn-p{background:var(--gr);color:#fff}.btn-p:hover{background:#185730}
+.btn-o{background:var(--or);color:#fff;margin-top:6px}.btn-o:hover{background:#a83f00}
+.btn-g{background:transparent;border:1px solid var(--brd);color:var(--mut);margin-top:6px}.btn-g:hover{background:var(--bg)}
+/* FOTO UPLOAD */
+.foto-area{border:1.5px dashed var(--brd);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:.13s;margin-bottom:11px;background:var(--bg)}
+.foto-area:hover{border-color:var(--gm);background:var(--gl)}
+.foto-area input[type=file]{display:none}
+.foto-area p{font-size:12px;color:var(--mut);margin-top:4px}
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.foto-thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden}
+.foto-thumb img{width:100%;height:100%;object-fit:cover}
+.foto-thumb .del-foto{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+/* LAVORI */
+.lcard{border:1px solid var(--brd);border-radius:9px;padding:11px 12px;background:var(--sur);margin-bottom:8px}
+.lh{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+.lname{font-size:13px;font-weight:600;flex:1;line-height:1.3}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0}
+.bgr{background:var(--gl);color:var(--gr)}.bor{background:var(--ol);color:var(--or)}.brd{background:var(--rl);color:var(--rd)}
+.lmeta{font-size:12px;color:var(--mut);line-height:1.65;margin-bottom:4px}
+.lnota{font-size:11px;color:var(--or);font-style:italic;margin-top:3px}
+.lacts{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.lb{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;font-family:inherit;transition:.1s}
+.lb:hover{filter:brightness(.9)}
+.lbg{background:var(--gl);border-color:var(--gm);color:var(--gr)}
+.lbo{background:var(--ol);border-color:var(--om);color:var(--or)}
+.lbr{background:var(--rl);border-color:var(--rm);color:var(--rd)}
+.lbm{background:var(--bg);border-color:var(--brd);color:var(--mut)}
+.card-fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.card-fotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:5px;cursor:pointer}
+.empty{text-align:center;padding:28px 10px;color:var(--mut);font-size:12px;line-height:1.6}
+.legend{position:absolute;bottom:16px;left:10px;z-index:900;background:rgba(255,255,255,.95);border:1px solid var(--brd);border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none}
+.li{display:flex;align-items:center;gap:7px;padding:2px 0}
+.lc{width:14px;height:5px;border-radius:2px}
+/* MODAL */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:4000;display:none;align-items:center;justify-content:center;padding:16px}
+.mover.on{display:flex}
+.mbox{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:400px;max-height:90dvh;overflow-y:auto}
+.mbox h3{font-size:15px;font-weight:600;margin-bottom:3px}
+.msub{font-size:12px;color:var(--mut);margin-bottom:14px}
+.macts{display:flex;gap:8px;margin-top:12px}
+.macts button{flex:1}
+/* LIGHTBOX */
+.lbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9000;display:none;align-items:center;justify-content:center}
+.lbox.on{display:flex}
+.lbox img{max-width:92vw;max-height:88vh;border-radius:8px;object-fit:contain}
+.lbox-close{position:fixed;top:16px;right:20px;color:#fff;font-size:26px;cursor:pointer;line-height:1}
+@media(max-width:640px){
+  :root{--pan:100%}
+  .layout{flex-direction:column}
+  #map{height:44dvh;flex:none}
+  .panel{width:100%;flex:1;border-left:none;border-top:1px solid var(--brd)}
+  .legend{bottom:6px}
+}
+</style>
+</head>
+<body>
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  <h1>Pulizie Urbane – Castel di Lama</h1>
+  <span class="hd" id="hdate"></span>
+</header>
+<div class="layout">
+  <div id="map"></div>
+  <div class="panel">
+    <div class="ptabs">
+      <button class="ptab on" data-tab="prog">Programma</button>
+      <button class="ptab" data-tab="lavori">Lavori <span id="bcnt" style="background:var(--gr);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span></button>
+    </div>
+
+    <!-- TAB PROGRAMMA -->
+    <div class="pbody" id="tab-prog">
+      <div class="hint" id="hint-main">
+        <b>✏️ Disegna la zona da pulire</b>
+        Usa i pulsanti sulla mappa: <b>linea</b> per strade/tratti, <b>poligono</b> per piazze e parchi. Il programma riconosce la zona reale automaticamente.
+      </div>
+      <div class="loader" id="loader"><span class="spin"></span>Ricerca su OpenStreetMap…</div>
+      <div id="area-match" style="display:none">
+        <div class="mlabel">Zone trovate — seleziona</div>
+        <div id="match-list"></div>
+        <button class="btn btn-g" onclick="resetDisegno()">↩ Ridisegna</button>
+      </div>
+      <div id="area-form" style="display:none">
+        <div class="hint info" id="hint-sel"></div>
+        <div class="fg"><label class="fl">Nome zona</label><input type="text" id="f-nome"></div>
+        <div class="fg"><label class="fl">Data</label><input type="date" id="f-data"></div>
+        <div class="fg">
+          <label class="fl">Tipo intervento</label>
+          <select id="f-tipo">
+            <option>Raccolta rifiuti</option><option>Spazzamento stradale</option>
+            <option>Pulizia parco / area verde</option><option>Diserbo marciapiedi</option>
+            <option>Svuotamento cestini</option><option>Pulizia piazza</option><option>Altro</option>
+          </select>
+        </div>
+        <div class="mlabel">Operatori</div>
+        <div class="ops" id="ops-grid"></div>
+        <div class="fg"><label class="fl">Note</label><textarea id="f-note" placeholder="Priorità, attrezzatura…"></textarea></div>
+        <button class="btn btn-p" onclick="salvaLavoro()">💾 Salva intervento</button>
+        <button class="btn btn-g" onclick="resetDisegno()">↩ Ricomincia</button>
+      </div>
+    </div>
+
+    <!-- TAB LAVORI -->
+    <div class="pbody" id="tab-lavori" style="display:none">
+      <div class="mlabel">Interventi pianificati</div>
+      <div id="lavori-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="li"><div class="lc" style="background:#B83025"></div>Da fare</div>
+  <div class="li"><div class="lc" style="background:#E67E22"></div>Parziale</div>
+  <div class="li"><div class="lc" style="background:#1E6B3C"></div>Completato</div>
+</div>
+
+<!-- MODAL CONSUNTIVO -->
+<div class="mover" id="modal">
+  <div class="mbox">
+    <h3>Chiudi intervento</h3>
+    <div class="msub" id="msub"></div>
+    <div class="fg"><label class="fl">Stato a fine giornata</label>
+      <select id="mstato" onchange="toggleModalParziale()">
+        <option value="green">✅ Completato</option>
+        <option value="orange">⚠️ Parzialmente completato</option>
+      </select>
+    </div>
+    <!-- SEZIONE PARZIALE -->
+    <div id="modal-parziale" style="display:none">
+      <div class="hint orange" style="margin-bottom:10px">
+        <b>🖊 Disegna la parte completata</b>
+        Dopo aver salvato, usa gli strumenti sulla mappa per tracciare la porzione svolta. La zona si colorerà verde (fatto) e arancione (da finire).
+      </div>
+      <div class="fg"><label class="fl">Cosa manca ancora?</label>
+        <textarea id="mnota" placeholder="Descrivi cosa rimane da fare…"></textarea>
+      </div>
+    </div>
+    <!-- FOTO -->
+    <div class="mlabel" style="margin-top:8px">Foto del lavoro svolto</div>
+    <div class="foto-area" id="modal-foto-area" onclick="document.getElementById('modal-foto-input').click()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--mut)" stroke-width="1.8" style="margin:0 auto;display:block"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <p>Tocca per aggiungere foto</p>
+      <input type="file" id="modal-foto-input" accept="image/*" multiple onchange="aggiungiForoModal(event)">
+    </div>
+    <div class="foto-grid" id="modal-foto-grid"></div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-p" onclick="salvaConsuntivo()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DISEGNO PARTE COMPLETATA -->
+<div class="mover" id="modal-draw-partial">
+  <div class="mbox">
+    <h3>✏️ Disegna la parte completata</h3>
+    <div class="msub" id="mdp-sub"></div>
+    <div class="hint orange">
+      Traccia sulla mappa (con linea o poligono) la <b>porzione già pulita</b>. La zona diventerà <b style="color:var(--gr)">verde</b> per la parte fatta e <b style="color:var(--or)">arancione</b> per quella restante.
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--mut)">Usa gli strumenti di disegno che appaiono sulla mappa, poi clicca Conferma.</div>
+    <div class="macts" style="margin-top:16px">
+      <button class="btn btn-g" onclick="annullaDisegnoParziale()">Annulla</button>
+      <button class="btn btn-p" onclick="confermaParziale()">✓ Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX FOTO -->
+<div class="lbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lbox-close">✕</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script>
+const OPERATORI=[
+  {id:'a',nome:'Marco Rossi'},{id:'b',nome:'Laura Bianchi'},
+  {id:'c',nome:'Giuseppe Ferri'},{id:'d',nome:'Anna Conti'},{id:'e',nome:'Paolo Marini'}
+];
+const OVERPASS=[
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
+
+let lavori=JSON.parse(localStorage.getItem('cdl5')||'[]');
+let overlayLayers={};      // id → {base, completata, restante}
+let selectedGeom=null, selectedIsArea=false;
+let matchElements=[];
+let lastDrawnLatLngs=[];  // coordinate originali disegnate dall'utente
+let modalId=null;
+let modalFotos=[];         // foto temporanee nel modal
+let partialDrawnLayer=null;// layer disegnato per la parte completata
+let partialLavoroId=null;
+
+// ── MAPPA ─────────────────────────────────────────────────────────────────────
+const map=L.map('map').setView([42.8667,13.7500],15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+
+const drawn=new L.FeatureGroup().addTo(map);
+const drawnPartial=new L.FeatureGroup().addTo(map);
+
+const drawCtrl=new L.Control.Draw({
+  draw:{
+    polyline:{shapeOptions:{color:'#1A4F7A',weight:4,dashArray:'6,4'},metric:true},
+    polygon:{shapeOptions:{color:'#1A4F7A',fillOpacity:.1,weight:3},showArea:false},
+    rectangle:false,circle:false,marker:false,circlemarker:false
+  },
+  edit:{featureGroup:drawn,remove:false}
+});
+map.addControl(drawCtrl);
+
+// Controllo disegno per la parte parziale (abilitato solo quando serve)
+const drawCtrlPartial=new L.Control.Draw({
+  draw:{
+    polyline:{shapeOptions:{color:'#1E6B3C',weight:5},metric:true},
+    polygon:{shapeOptions:{color:'#1E6B3C',fillOpacity:.15,weight:3},showArea:false},
+    rectangle:false,circle:false,marker:false,circlemarker:false
+  },
+  edit:{featureGroup:drawnPartial,remove:false}
+});
+
+// ── EVENTO DISEGNO PRINCIPALE ─────────────────────────────────────────────────
+map.on(L.Draw.Event.CREATED,async e=>{
+  // Se siamo in modalità disegno parziale, gestisci separatamente
+  if(partialLavoroId){
+    drawnPartial.clearLayers();
+    drawnPartial.addLayer(e.layer);
+    partialDrawnLayer=e.layer;
+    return;
+  }
+  drawn.clearLayers();
+  drawn.addLayer(e.layer);
+  const isLine=(e.layerType==='polyline');
+  // Salva i punti originali disegnati per lo snap successivo
+  if(isLine){
+    lastDrawnLatLngs=e.layer.getLatLngs();
+  } else {
+    lastDrawnLatLngs=[];
+  }
+  showLoader(true); hideAreas();
+  try{
+    const matches=await queryOverpass(e.layer.getBounds(),isLine,e.layer);
+    showLoader(false);
+    if(!matches.length){
+      setHint('warn','<b>⚠️ Zona non trovata</b>Prova a disegnare più vicino alla strada o zona desiderata.');
+      drawn.clearLayers(); return;
+    }
+    mostraMatch(matches);
+  }catch(err){
+    showLoader(false);
+    setHint('warn','<b>⚠️ Connessione non disponibile</b>Verifica la connessione internet e riprova.<br><small>'+err.message+'</small>');
+    drawn.clearLayers();
+  }
+});
+
+// ── OVERPASS ──────────────────────────────────────────────────────────────────
+async function queryOverpass(bounds,isLine,layer){
+  const pad=0.0006;
+  const S=(bounds.getSouth()-pad).toFixed(5),W=(bounds.getWest()-pad).toFixed(5);
+  const N=(bounds.getNorth()+pad).toFixed(5),E=(bounds.getEast()+pad).toFixed(5);
+  const bbox=`${S},${W},${N},${E}`;
+  const q=isLine
+    ?`[out:json][timeout:20];(way["highway"]["name"](${bbox});way["highway"]["ref"](${bbox}););out geom qt;`
+    :`[out:json][timeout:20];(way["leisure"~"park|garden|pitch|playground"](${bbox});way["landuse"~"recreation_ground|grass|village_green|cemetery"](${bbox});way["place"~"square"](${bbox});way["amenity"~"marketplace"](${bbox});way["highway"]["name"](${bbox}););out geom qt;`;
+  const controllers=OVERPASS.map(()=>new AbortController());
+  const data=await Promise.any(OVERPASS.map((url,i)=>
+    fetch(url+'?data='+encodeURIComponent(q),{signal:controllers[i].signal})
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(d=>{controllers.forEach((c,j)=>{if(j!==i)try{c.abort()}catch(e){}});return d;})
+  ));
+  const pad2=L.latLngBounds(bounds.getSouthWest(),bounds.getNorthEast()).pad(0.001);
+  const candidates=data.elements.filter(el=>el.tags?.name&&el.geometry?.length>1);
+  const scored=candidates.map(el=>{
+    let hits=0;
+    el.geometry.forEach(p=>{if(pad2.contains([p.lat,p.lon]))hits++;});
+    return{...el,_score:hits/el.geometry.length,_hits:hits};
+  }).filter(el=>el._hits>0);
+  const byName={};
+  scored.forEach(el=>{const n=el.tags.name;if(!byName[n]||el._score>byName[n]._score)byName[n]=el;});
+  return Object.values(byName).sort((a,b)=>b._score-a._score).slice(0,6);
+}
+
+function mostraMatch(matches){
+  matchElements=matches;
+  document.getElementById('hint-main').style.display='none';
+  document.getElementById('match-list').innerHTML=matches.map((el,i)=>`
+    <div class="match-item" id="mi-${i}" onclick="selezionaMatch(${i})">
+      <div style="flex:1"><div class="mi-n">${el.tags.name}</div>
+      <div class="mi-t">${getTipo(el)} · ${Math.round(el._score*100)}% corrispondenza</div></div>
+      <div style="font-size:18px;color:var(--mut)">›</div>
+    </div>`).join('');
+  document.getElementById('area-match').style.display='block';
+}
+
+function getTipo(el){
+  const t=el.tags||{};
+  if(t.leisure==='park'||t.leisure==='garden') return 'Parco / Giardino';
+  if(t.leisure==='pitch') return 'Campo sportivo';
+  if(t.place==='square') return 'Piazza';
+  if(t.landuse==='cemetery') return 'Cimitero';
+  if(t.landuse) return 'Area verde';
+  if(t.amenity==='marketplace') return 'Mercato';
+  const hm={residential:'Strada residenziale',primary:'Via principale',secondary:'Via secondaria',
+    tertiary:'Via terziaria',service:'Servizio',footway:'Percorso pedonale',path:'Sentiero',cycleway:'Ciclabile',unclassified:'Strada'};
+  return hm[t.highway]||'Strada';
+}
+
+function selezionaMatch(i){
+  document.querySelectorAll('.match-item').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('mi-'+i)?.classList.add('sel');
+  const el=matchElements[i];
+  const isArea=!!(el.tags.leisure||el.tags.landuse||(el.tags.place==='square')||el.tags.amenity==='marketplace');
+  drawn.clearLayers();
+
+  let geomFinale;
+  if(isArea){
+    // Per aree: usa tutta la geometria OSM (il poligono è già quello giusto)
+    geomFinale=el.geometry;
+  } else {
+    // Per strade: snap del solo tratto disegnato dall'utente
+    geomFinale=snapTrattoDegnato(el.geometry, lastDrawnLatLngs);
+  }
+
+  const coords=geomFinale.map(p=>[p.lat,p.lon]);
+  const rl=isArea
+    ?L.polygon(coords,{color:'#1E6B3C',fillColor:'#1E6B3C',fillOpacity:.2,weight:3})
+    :L.polyline(coords,{color:'#1A4F7A',weight:5,opacity:.85});
+  drawn.addLayer(rl);
+  map.fitBounds(rl.getBounds(),{padding:[50,50]});
+  selectedGeom=geomFinale; selectedIsArea=isArea;
+  document.getElementById('area-match').style.display='none';
+  mostraForm(el,isArea);
+}
+
+// Ritaglia i nodi OSM del way che cadono vicino al tratto disegnato dall'utente.
+// Mantiene l'ordine dei nodi OSM, non aggiunge né allunga nulla.
+function snapTrattoDegnato(osmGeom, drawnLatLngs){
+  if(!drawnLatLngs||drawnLatLngs.length<2) return osmGeom;
+
+  // Calcola la distanza in gradi tra due punti
+  function dist(a,b){
+    const dlat=a.lat-b[0], dlng=a.lon-b[1];
+    return Math.sqrt(dlat*dlat+dlng*dlng);
+  }
+
+  // Soglia: dipende dalla lunghezza del tratto disegnato
+  // Prende come riferimento la diagonale del bbox del disegno * 0.3
+  let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+  drawnLatLngs.forEach(p=>{
+    minLat=Math.min(minLat,p.lat); maxLat=Math.max(maxLat,p.lat);
+    minLng=Math.min(minLng,p.lng); maxLng=Math.max(maxLng,p.lng);
+  });
+  const diag=Math.sqrt((maxLat-minLat)**2+(maxLng-minLng)**2);
+  // Soglia adattiva: almeno 0.0003 gradi (~30m), al massimo metà diagonale
+  const soglia=Math.max(0.0003, Math.min(diag*0.6, 0.003));
+
+  // Trova il nodo OSM più vicino al primo punto disegnato (start snap)
+  let bestStartIdx=0, bestStartDist=Infinity;
+  osmGeom.forEach((p,idx)=>{
+    const d=dist(p,[drawnLatLngs[0].lat, drawnLatLngs[0].lng]);
+    if(d<bestStartDist){bestStartDist=d; bestStartIdx=idx;}
+  });
+
+  // Trova il nodo OSM più vicino all'ultimo punto disegnato (end snap)
+  const last=drawnLatLngs[drawnLatLngs.length-1];
+  let bestEndIdx=0, bestEndDist=Infinity;
+  osmGeom.forEach((p,idx)=>{
+    const d=dist(p,[last.lat, last.lng]);
+    if(d<bestEndDist){bestEndDist=d; bestEndIdx=idx;}
+  });
+
+  // Assicura ordine corretto (startIdx <= endIdx)
+  let startIdx=Math.min(bestStartIdx,bestEndIdx);
+  let endIdx=Math.max(bestStartIdx,bestEndIdx);
+
+  // Estrai solo il sottoinsieme di nodi tra start e end
+  let tratto=osmGeom.slice(startIdx, endIdx+1);
+
+  // Se il tratto estratto è troppo corto (1 nodo) usa almeno 2
+  if(tratto.length<2&&osmGeom.length>=2){
+    const si=Math.max(0,startIdx-1);
+    const ei=Math.min(osmGeom.length-1,endIdx+1);
+    tratto=osmGeom.slice(si,ei+1);
+  }
+
+  return tratto.length>=2 ? tratto : osmGeom;
+}
+
+function mostraForm(el,isArea){
+  document.getElementById('hint-sel').innerHTML=`<b>✅ ${el.tags.name}</b>${getTipo(el)} — tracciato adattato alla mappa reale`;
+  document.getElementById('f-nome').value=el.tags.name;
+  document.getElementById('f-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-tipo').value=isArea?'Pulizia parco / area verde':'Spazzamento stradale';
+  document.getElementById('ops-grid').innerHTML=OPERATORI.map(op=>`
+    <label class="op" id="op-${op.id}" onclick="toggleOp('${op.id}')">
+      <input type="checkbox" value="${op.id}"> ${op.nome}
+    </label>`).join('');
+  document.getElementById('f-note').value='';
+  document.getElementById('area-form').style.display='block';
+}
+
+function toggleOp(id){
+  const el=document.getElementById('op-'+id);
+  const cb=el.querySelector('input');
+  cb.checked=!cb.checked;
+  el.classList.toggle('on',cb.checked);
+}
+
+// ── SALVA LAVORO NUOVO ────────────────────────────────────────────────────────
+function salvaLavoro(){
+  const nome=document.getElementById('f-nome').value.trim();
+  const data=document.getElementById('f-data').value;
+  if(!nome||!data){alert('Inserisci nome e data.');return;}
+  const ops=[...document.querySelectorAll('.op input:checked')]
+    .map(cb=>OPERATORI.find(o=>o.id===cb.value)?.nome).filter(Boolean);
+  const lav={
+    id:'lav_'+Date.now(),nome,data,
+    tipo:document.getElementById('f-tipo').value,
+    note:document.getElementById('f-note').value.trim(),
+    operatori:ops,stato:'red',notaMancante:'',
+    geom:selectedGeom,isArea:selectedIsArea,
+    geomCompletata:null,  // geometria della parte completata
+    foto:[]               // foto base64
+  };
+  lavori.push(lav);
+  saveStorage();
+  drawn.clearLayers();
+  disegnaLavoro(lav);
+  renderLavori();
+  resetDisegno();
+  switchTab('lavori');
+}
+
+// ── OVERLAY LAVORI ────────────────────────────────────────────────────────────
+function col(s){return s==='green'?'#1E6B3C':s==='orange'?'#E67E22':'#B83025';}
+
+function disegnaLavoro(lav){
+  if(!lav.geom?.length) return;
+  // Rimuovi layers precedenti
+  rimuoviLayerLav(lav.id);
+
+  const layers={};
+
+  if(lav.stato==='orange'&&lav.geomCompletata?.length){
+    // Parte completata → verde
+    const cCoords=lav.geomCompletata.map(p=>[p.lat,p.lon??p.lng]);
+    const lc=lav.isArea
+      ?L.polygon(cCoords,{color:'#1E6B3C',fillColor:'#1E6B3C',fillOpacity:.25,weight:3})
+      :L.polyline(cCoords,{color:'#1E6B3C',weight:7,opacity:.85});
+    lc.bindTooltip(`<b>${lav.nome}</b><br>✅ Parte completata`,{sticky:true});
+    lc.addTo(map);
+    layers.completata=lc;
+
+    // Parte restante (geometria base) → arancione
+    const bCoords=lav.geom.map(p=>[p.lat,p.lon??p.lng]);
+    const lr=lav.isArea
+      ?L.polygon(bCoords,{color:'#E67E22',fillColor:'#E67E22',fillOpacity:.18,weight:3,dashArray:'6,3'})
+      :L.polyline(bCoords,{color:'#E67E22',weight:5,opacity:.7,dashArray:'8,4'});
+    lr.bindTooltip(`<b>${lav.nome}</b><br>⚠️ Da completare`,{sticky:true});
+    lr.addTo(map);
+    layers.restante=lr;
+  } else {
+    // Unico layer colorato per stato
+    const c=col(lav.stato);
+    const coords=lav.geom.map(p=>[p.lat,p.lon??p.lng]);
+    const lb=lav.isArea
+      ?L.polygon(coords,{color:c,fillColor:c,fillOpacity:.22,weight:3})
+      :L.polyline(coords,{color:c,weight:6,opacity:.8});
+    lb.bindTooltip(`<b>${lav.nome}</b><br>${lav.tipo}<br>📅 ${lav.data}`,{sticky:true});
+    lb.addTo(map);
+    layers.base=lb;
+  }
+  overlayLayers[lav.id]=layers;
+}
+
+function rimuoviLayerLav(id){
+  const l=overlayLayers[id]; if(!l) return;
+  Object.values(l).forEach(x=>map.removeLayer(x));
+  delete overlayLayers[id];
+}
+
+function renderAllOverlays(){
+  Object.keys(overlayLayers).forEach(id=>rimuoviLayerLav(id));
+  lavori.forEach(disegnaLavoro);
+}
+
+// ── RENDER LISTA LAVORI ───────────────────────────────────────────────────────
+function renderLavori(){
+  document.getElementById('bcnt').textContent=lavori.length;
+  const el=document.getElementById('lavori-list');
+  if(!lavori.length){el.innerHTML='<div class="empty">Nessun intervento ancora.<br>Disegna una zona sulla mappa per iniziare.</div>';return;}
+  el.innerHTML=lavori.slice().reverse().map(lav=>{
+    const bc=lav.stato==='green'?'bgr':lav.stato==='orange'?'bor':'brd';
+    const bl=lav.stato==='green'?'Completato':lav.stato==='orange'?'Parziale':'Da fare';
+    const fotoHtml=lav.foto?.length
+      ?`<div class="card-fotos">${lav.foto.map(f=>`<img src="${f}" onclick="openLightbox('${f}')">`).join('')}</div>`:'';
+    return `<div class="lcard">
+      <div class="lh"><div class="lname">${lav.nome}</div><span class="badge ${bc}">${bl}</span></div>
+      <div class="lmeta">📅 ${lav.data} · ${lav.tipo}<br>👷 ${lav.operatori.join(', ')||'—'}</div>
+      ${lav.note?`<div style="font-size:11px;color:var(--mut);margin-bottom:3px">📝 ${lav.note}</div>`:''}
+      ${lav.notaMancante?`<div class="lnota">⚠️ Manca: ${lav.notaMancante}</div>`:''}
+      ${fotoHtml}
+      <div class="lacts">
+        <button class="lb lbm" onclick="zoomLav('${lav.id}')">🔍</button>
+        ${lav.stato==='red'
+          ?`<button class="lb lbg" onclick="apriModal('${lav.id}')">Chiudi lavoro</button>`
+          :`<button class="lb lbo" onclick="apriModal('${lav.id}')">Modifica stato</button>`}
+        <button class="lb lbr" onclick="elimina('${lav.id}')">Elimina</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function zoomLav(id){
+  const layers=overlayLayers[id]; if(!layers) return;
+  const l=layers.base||layers.restante||layers.completata;
+  if(l&&l.getBounds) map.fitBounds(l.getBounds(),{padding:[60,60]});
+}
+function elimina(id){
+  if(!confirm('Eliminare?')) return;
+  rimuoviLayerLav(id);
+  lavori=lavori.filter(x=>x.id!==id);
+  saveStorage(); renderLavori();
+}
+
+// ── MODAL CONSUNTIVO ──────────────────────────────────────────────────────────
+function apriModal(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  modalId=id; modalFotos=[];
+  document.getElementById('msub').textContent=lav.nome+' · '+lav.data;
+  document.getElementById('mstato').value=lav.stato==='green'?'green':'orange';
+  document.getElementById('mnota').value=lav.notaMancante||'';
+  // Mostra le foto già salvate come anteprima (non modificabili, solo visibili)
+  const grid=document.getElementById('modal-foto-grid');
+  if(lav.foto?.length){
+    grid.innerHTML=lav.foto.map((f,i)=>`
+      <div class="foto-thumb">
+        <img src="${f}" onclick="openLightbox('${f}')">
+        <button class="del-foto" onclick="rimuoviFotoEsistente('${id}',${i})">✕</button>
+      </div>`).join('');
+  } else {
+    grid.innerHTML='';
+  }
+  toggleModalParziale();
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){document.getElementById('modal').classList.remove('on'); modalFotos=[];}
+
+function toggleModalParziale(){
+  const v=document.getElementById('mstato').value;
+  document.getElementById('modal-parziale').style.display=v==='orange'?'block':'none';
+}
+
+// ── FOTO ──────────────────────────────────────────────────────────────────────
+function aggiungiForoModal(e){
+  const files=[...e.target.files];
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      // Ridimensiona a max 800px lato lungo per non appesantire il localStorage
+      compressImg(ev.target.result, 800, b64=>{
+        modalFotos.push(b64);
+        renderFotoGrid();
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value='';
+}
+
+function compressImg(src,maxSize,cb){
+  const img=new Image();
+  img.onload=()=>{
+    const canvas=document.createElement('canvas');
+    let w=img.width,h=img.height;
+    if(w>h&&w>maxSize){h=Math.round(h*maxSize/w);w=maxSize;}
+    else if(h>maxSize){w=Math.round(w*maxSize/h);h=maxSize;}
+    canvas.width=w; canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    cb(canvas.toDataURL('image/jpeg',0.82));
+  };
+  img.src=src;
+}
+
+function renderFotoGrid(){
+  const lav=lavori.find(l=>l.id===modalId);
+  const esistenti=(lav?.foto||[]).map((f,i)=>`
+    <div class="foto-thumb">
+      <img src="${f}" onclick="openLightbox('${f}')">
+      <button class="del-foto" onclick="rimuoviFotoEsistente('${modalId}',${i})">✕</button>
+    </div>`).join('');
+  const nuove=modalFotos.map((f,i)=>`
+    <div class="foto-thumb" style="outline:2px solid var(--gm)">
+      <img src="${f}" onclick="openLightbox('${f}')">
+      <button class="del-foto" onclick="rimuoviFotoModal(${i})">✕</button>
+    </div>`).join('');
+  document.getElementById('modal-foto-grid').innerHTML=esistenti+nuove;
+}
+function rimuoviFotoModal(i){modalFotos.splice(i,1);renderFotoGrid();}
+
+function rimuoviFotoEsistente(lavId,i){
+  const lav=lavori.find(l=>l.id===lavId); if(!lav) return;
+  lav.foto.splice(i,1);
+  saveStorage(); renderLavori();
+  const grid=document.getElementById('modal-foto-grid');
+  grid.innerHTML=lav.foto.map((f,idx)=>`
+    <div class="foto-thumb">
+      <img src="${f}" onclick="openLightbox('${f}')">
+      <button class="del-foto" onclick="rimuoviFotoEsistente('${lavId}',${idx})">✕</button>
+    </div>`).join('');
+}
+
+function salvaConsuntivo(){
+  const lav=lavori.find(l=>l.id===modalId); if(!lav) return;
+  const stato=document.getElementById('mstato').value;
+  lav.stato=stato;
+  lav.notaMancante=stato==='orange'?document.getElementById('mnota').value:'';
+  // Aggiungi nuove foto a quelle esistenti
+  lav.foto=[...(lav.foto||[]),...modalFotos];
+  saveStorage();
+  renderLavori();
+  closeModal();
+
+  if(stato==='orange'){
+    // Avvia flusso disegno parte completata
+    avviaDisegnoParziale(lav);
+  } else {
+    // Completato: ridisegna tutto verde
+    disegnaLavoro(lav);
+  }
+}
+
+// ── DISEGNO PARTE COMPLETATA ──────────────────────────────────────────────────
+function avviaDisegnoParziale(lav){
+  partialLavoroId=lav.id;
+  // Zoom sulla zona
+  const layers=overlayLayers[lav.id];
+  const baseL=layers?.base||layers?.restante;
+  if(baseL&&baseL.getBounds) map.fitBounds(baseL.getBounds(),{padding:[40,40]});
+  // Prima mostra il layer base arancione
+  disegnaLavoro(lav);
+  // Apri modal istruzioni + abilita disegno
+  document.getElementById('mdp-sub').textContent=lav.nome+' · '+lav.data;
+  document.getElementById('modal-draw-partial').classList.add('on');
+  map.addControl(drawCtrlPartial);
+  drawnPartial.clearLayers();
+  switchTab('prog');
+  resetDisegno();
+}
+
+function annullaDisegnoParziale(){
+  chiudiModalDrawPartial();
+}
+
+function confermaParziale(){
+  const lav=lavori.find(l=>l.id===partialLavoroId); if(!lav) return;
+  if(!partialDrawnLayer){
+    alert('Disegna prima la parte completata sulla mappa.');return;
+  }
+  // Salva la geometria della parte completata
+  const gj=partialDrawnLayer.toGeoJSON();
+  const geom=gj.geometry.type==='LineString'
+    ?gj.geometry.coordinates.map(c=>({lat:c[1],lon:c[0]}))
+    :gj.geometry.coordinates[0].map(c=>({lat:c[1],lon:c[0]}));
+  lav.geomCompletata=geom;
+  saveStorage();
+  disegnaLavoro(lav);
+  chiudiModalDrawPartial();
+}
+
+function chiudiModalDrawPartial(){
+  document.getElementById('modal-draw-partial').classList.remove('on');
+  map.removeControl(drawCtrlPartial);
+  drawnPartial.clearLayers();
+  partialLavoroId=null;
+  partialDrawnLayer=null;
+}
+
+// ── LIGHTBOX FOTO ─────────────────────────────────────────────────────────────
+function openLightbox(src){
+  document.getElementById('lightbox-img').src=src;
+  document.getElementById('lightbox').classList.add('on');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('on');}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function showLoader(v){document.getElementById('loader').style.display=v?'block':'none';}
+function hideAreas(){
+  ['hint-main','area-match','area-form'].forEach(id=>document.getElementById(id).style.display='none');
+}
+function setHint(type,html){
+  const h=document.getElementById('hint-main');
+  h.className='hint '+(type||''); h.innerHTML=html; h.style.display='block';
+}
+function resetDisegno(){
+  drawn.clearLayers(); selectedGeom=null; selectedIsArea=false;
+  document.getElementById('area-match').style.display='none';
+  document.getElementById('area-form').style.display='none';
+  setHint('','<b>✏️ Disegna la zona da pulire</b>Usa i pulsanti sulla mappa: <b>linea</b> per strade/tratti, <b>poligono</b> per piazze e parchi.');
+}
+function saveStorage(){localStorage.setItem('cdl5',JSON.stringify(lavori));}
+function switchTab(t){
+  document.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
+  document.getElementById('tab-prog').style.display=t==='prog'?'':'none';
+  document.getElementById('tab-lavori').style.display=t==='lavori'?'':'none';
+}
+document.querySelectorAll('.ptab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+document.getElementById('hdate').textContent=new Date().toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+renderLavori();
+renderAllOverlays();
+</script>
+</body>
+</html>
