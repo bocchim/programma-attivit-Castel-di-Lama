@@ -1,0 +1,4006 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pulizie Urbane – Castel di Lama</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#F4F2ED;--sur:#fff;--brd:#E0DCD4;--txt:#1A1816;--mut:#7A756E;
+  --gr:#1E6B3C;--gl:#E6F3EC;--gm:#9DCFB0;
+  --rd:#B83025;--rl:#FDECEA;--rm:#F5A39A;
+  --or:#C94E00;--ol:#FDF0E6;--om:#F5B07A;
+  --bl:#1A4F7A;--bll:#E6F0FA;--pan:350px;
+  --pu:#7B4FA6;--pul:#F3ECF9;--pum:#C39FDC;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+header{background:var(--gr);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+header h1{font-size:14px;font-weight:600}
+.hd{font-size:11px;opacity:.65;margin-left:auto;font-family:'DM Mono',monospace}
+.layout{display:flex;flex:1;overflow:hidden;position:relative}
+#map{flex:1;z-index:1}
+.view-switcher{position:absolute;top:10px;right:10px;z-index:1000;display:flex;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.2);border:1px solid var(--brd)}
+.vs-btn{padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;font-family:inherit;color:var(--mut);transition:.15s}
+.vs-btn.on{background:var(--gr);color:#fff}
+.panel{width:var(--pan);background:var(--sur);border-left:1px solid var(--brd);display:flex;flex-direction:column;z-index:500;overflow:hidden}
+.ptabs{display:flex;border-bottom:1px solid var(--brd);flex-shrink:0;overflow-x:auto}
+.ptab{flex:1;min-width:80px;padding:9px 4px;font-size:11px;font-weight:500;text-align:center;cursor:pointer;color:var(--mut);border:none;border-bottom:2.5px solid transparent;margin-bottom:-1px;background:none;font-family:inherit;transition:.15s;white-space:nowrap}
+.ptab.on{color:var(--gr);border-bottom-color:var(--gr)}
+.pbody{flex:1;overflow-y:auto;padding:14px 13px}
+.hint{background:var(--gl);border:1px solid var(--gm);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gr);line-height:1.55;margin-bottom:12px}
+.hint b{display:block;font-size:13px;margin-bottom:2px}
+.hint.warn{background:#FFF8E6;border-color:#F5C842;color:#7A5800}
+.hint.info{background:var(--bll);border-color:#9FC6E8;color:var(--bl)}
+.hint.orange{background:var(--ol);border-color:var(--om);color:var(--or)}
+.loader{padding:16px;text-align:center;font-size:12px;color:var(--mut);display:none}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--brd);border-top-color:var(--gr);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes card-pulse{0%,100%{box-shadow:0 0 0 3px var(--gm)}50%{box-shadow:0 0 0 6px var(--gm)}}
+.mlabel{font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--mut);margin-bottom:7px;margin-top:4px}
+.match-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--brd);border-radius:7px;margin-bottom:6px;cursor:pointer;transition:.12s;background:var(--bg)}
+.match-item:hover,.match-item.sel{border-color:var(--gm);background:var(--gl)}
+.mi-n{font-size:13px;font-weight:500;flex:1;line-height:1.3}
+.mi-t{font-size:10px;color:var(--mut);margin-top:1px}
+.fg{margin-bottom:11px}
+.fl{display:block;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--txt);outline:none;transition:.13s}
+input:focus,select:focus,textarea:focus{border-color:var(--gr);background:#fff}
+textarea{resize:vertical;min-height:52px}
+.ops{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.op{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;cursor:pointer;font-size:12px;background:var(--bg);transition:.12s;user-select:none}
+.op:hover{border-color:var(--gm)}.op.on{background:var(--gl);border-color:var(--gm);color:var(--gr)}
+.op input[type=checkbox]{accent-color:var(--gr);width:14px;height:14px;pointer-events:none;flex-shrink:0}
+.btn{display:block;width:100%;padding:10px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.13s;text-align:center}
+.btn-p{background:var(--gr);color:#fff}.btn-p:hover{background:#185730}
+.btn-g{background:transparent;border:1px solid var(--brd);color:var(--mut);margin-top:6px}.btn-g:hover{background:var(--bg)}
+.foto-area{border:1.5px dashed var(--brd);border-radius:8px;padding:12px;text-align:center;cursor:pointer;margin-bottom:11px;background:var(--bg)}
+.foto-area:hover{border-color:var(--gm);background:var(--gl)}
+.foto-area input[type=file]{display:none}
+.foto-area p{font-size:12px;color:var(--mut);margin-top:4px}
+/* FOTO SOURCE PICKER */
+.foto-src-row{display:flex;gap:8px;margin-bottom:11px}
+.foto-src-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px;border:1.5px dashed var(--brd);border-radius:8px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--mut);font-family:inherit;transition:.13s}
+.foto-src-btn:hover{border-color:var(--gm);background:var(--gl);color:var(--gr)}
+.foto-src-btn svg{opacity:.6}
+.foto-src-btn:hover svg{opacity:1}
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.foto-thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden}
+.foto-thumb img{width:100%;height:100%;object-fit:cover}
+.foto-thumb .df{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+/* CARD LAVORO */
+.lcard{border:1px solid var(--brd);border-radius:9px;padding:11px 12px;background:var(--sur);margin-bottom:8px;transition:box-shadow .2s,border-color .2s}
+.lcard.map-sel{border-color:var(--gr);box-shadow:0 0 0 3px var(--gm);animation:card-pulse .5s ease 2}
+.lh{display:flex;align-items:flex-start;gap:8px;margin-bottom:4px}
+.lname{font-size:13px;font-weight:600;flex:1;line-height:1.3}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;flex-shrink:0}
+.bgr{background:var(--gl);color:var(--gr)}.bor{background:var(--ol);color:var(--or)}.brd2{background:var(--rl);color:var(--rd)}
+.lmeta{font-size:11px;color:var(--mut);line-height:1.65;margin-bottom:3px}
+.lmisura{font-size:11px;color:var(--bl);margin-bottom:3px;font-family:'DM Mono',monospace}
+.lnota{font-size:11px;color:var(--or);font-style:italic;margin-top:3px}
+.lacts{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.lb{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;font-family:inherit;transition:.1s}
+.lb:hover{filter:brightness(.9)}
+.lbg{background:var(--gl);border-color:var(--gm);color:var(--gr)}
+.lbo{background:var(--ol);border-color:var(--om);color:var(--or)}
+.lbr{background:var(--rl);border-color:var(--rm);color:var(--rd)}
+.lbm{background:var(--bg);border-color:var(--brd);color:var(--mut)}
+.card-fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}
+.card-fotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:5px;cursor:pointer}
+.empty{text-align:center;padding:28px 10px;color:var(--mut);font-size:12px;line-height:1.6}
+.legend{position:absolute;bottom:16px;left:10px;z-index:900;background:rgba(255,255,255,.97);border:1px solid var(--brd);border-radius:10px;padding:9px 13px;font-size:11px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.li{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;user-select:none;transition:.12s;border-radius:5px}
+.li:hover{background:var(--bg)}
+.lc{width:14px;height:5px;border-radius:2px;flex-shrink:0;transition:.3s}
+.lc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:.3s}
+.li-label{font-size:11px;font-weight:500;transition:.2s}
+.li-check{width:13px;height:13px;accent-color:var(--gr);flex-shrink:0;cursor:pointer}
+.li.off .lc,.li.off .lc-dot{opacity:.25}
+.li.off .li-label{color:var(--mut);text-decoration:line-through}
+.legend-title{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+/* MODAL */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:4000;display:none;align-items:center;justify-content:center;padding:16px}
+.mover.on{display:flex}
+.mbox{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:400px;max-height:90dvh;overflow-y:auto}
+.mbox h3{font-size:15px;font-weight:600;margin-bottom:3px}
+.msub{font-size:12px;color:var(--mut);margin-bottom:14px}
+.macts{display:flex;gap:8px;margin-top:12px}
+.macts button{flex:1}
+/* BANNER PARZIALE */
+#partial-banner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:2000;background:#fff;border-top:2px solid var(--or);padding:12px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.15)}
+.pb-inner{max-width:700px;margin:0 auto}
+.pb-title{font-size:13px;font-weight:600;color:var(--or);margin-bottom:3px}
+.pb-sub{font-size:12px;color:var(--mut);margin-bottom:8px}
+.pb-row{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:5px}
+.pb-dot{width:13px;height:13px;border-radius:50%;background:#ccc;border:2px solid #999;flex-shrink:0;transition:.2s}
+.pb-btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pb-btn{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.13s}
+.pb-btn-annulla{border:1px solid var(--brd);background:transparent;color:var(--mut)}
+.pb-btn-conferma{border:none;background:#ccc;color:#fff;cursor:not-allowed}
+.pb-btn-conferma.ok{background:var(--gr);cursor:pointer}
+.pb-btn-reset{border:1px solid var(--or);background:transparent;color:var(--or)}
+/* ZONA SCELTA */
+.zona-scelta{display:none;margin:8px 0}
+.zona-scelta .zs-label{font-size:12px;color:var(--mut);margin-bottom:6px}
+.zona-scelta .zs-btns{display:flex;gap:8px}
+.zs-btn{flex:1;padding:8px;border-radius:6px;border:2px solid var(--brd);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.13s;background:var(--bg);color:var(--mut)}
+.zs-btn.sel-green{border-color:var(--gr);background:var(--gl);color:var(--gr)}
+.zs-btn.sel-orange{border-color:var(--or);background:var(--ol);color:var(--or)}
+/* LIGHTBOX */
+.lbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9000;display:none;align-items:center;justify-content:center}
+.lbox.on{display:flex}
+.lbox img{max-width:92vw;max-height:88vh;border-radius:8px;object-fit:contain}
+.lbox-close{position:fixed;top:16px;right:20px;color:#fff;font-size:26px;cursor:pointer}
+/* MIRINO CENTRALE */
+#crosshair{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1001;pointer-events:none;width:32px;height:32px}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:#B83025}
+#crosshair::before{width:2px;height:100%;left:50%;transform:translateX(-50%)}
+#crosshair::after{height:2px;width:100%;top:50%;transform:translateY(-50%)}
+#crosshair-dot{position:absolute;width:6px;height:6px;background:#B83025;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+/* FILTRI */
+.filtri-wrap{flex-shrink:0;border-bottom:1px solid var(--brd);background:var(--sur);padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.filtri-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.filtri-label{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);margin-right:2px;flex-shrink:0}
+.fp{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--brd);background:var(--bg);color:var(--mut);font-family:inherit;transition:.12s;white-space:nowrap}
+.fp:hover{border-color:var(--gm);color:var(--gr)}
+.fp.on{background:var(--gr);border-color:var(--gr);color:#fff}
+.filtri-range{display:none;gap:5px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.filtri-range.show{display:flex}
+.filtri-range input[type=date]{width:auto;flex:1;min-width:100px;padding:5px 8px;font-size:12px}
+.filtri-range .fp-apply{padding:5px 12px;font-size:11px}
+.tipi-filtro{display:flex;gap:5px;flex-wrap:wrap}
+.tf{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--brd);background:var(--bg);color:var(--mut);font-family:inherit;transition:.12s;display:flex;align-items:center;gap:4px}
+.tf input[type=checkbox]{accent-color:var(--gr);width:12px;height:12px;pointer-events:none}
+.tf.on{border-color:var(--gm);background:var(--gl);color:var(--gr)}
+.filtri-cnt{font-size:11px;color:var(--mut);margin-left:auto;flex-shrink:0}
+.pbody-with-filter{flex:1;overflow-y:auto;padding:14px 13px}
+/* MODALITÀ SOLO SCHEDE */
+.layout.solo-schede #map{display:none}
+.layout.solo-schede .panel{width:100%;border-left:none}
+.layout.solo-schede .view-switcher{display:none}
+.layout.solo-schede #draw-toolbar,
+.layout.solo-schede #draw-toolbar-active,
+.layout.solo-schede #draw-toolbar-taglio{display:none!important}
+/* STAMPA PDF */
+.print-period-btn{display:flex;align-items:center;gap:10px;width:100%;padding:14px 16px;border:1.5px solid var(--brd);border-radius:9px;background:var(--bg);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--txt);transition:.13s;margin-bottom:8px;text-align:left}
+.print-period-btn:hover{border-color:var(--gr);background:var(--gl);color:var(--gr)}
+.print-period-btn .pp-icon{font-size:20px;flex-shrink:0}
+.print-period-btn .pp-desc{font-size:11px;color:var(--mut);font-weight:400;display:block;margin-top:1px}
+#btn-stampa-df{padding:5px 11px;border-radius:6px;border:1px solid var(--brd);background:var(--bg);color:var(--mut);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.13s;white-space:nowrap;flex-shrink:0}
+#btn-stampa-df:hover{border-color:var(--gr);color:var(--gr);background:var(--gl)}
+/* MODAL MODIFICA INTERVENTO */
+.medit-section{border-top:1px solid var(--brd);padding-top:12px;margin-top:12px}
+.medit-section:first-child{border-top:none;padding-top:0;margin-top:0}
+.medit-geom-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.medit-geom-btn{flex:1;min-width:120px;padding:9px 10px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg);color:var(--mut);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;justify-content:center;transition:.13s}
+.medit-geom-btn:hover{border-color:var(--bl);color:var(--bl);background:var(--bll)}
+.medit-geom-btn.active{border-color:var(--bl);color:var(--bl);background:var(--bll)}
+/* bottone toggle mappa */
+#btn-toggle-map{padding:5px 11px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:11px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:.13s;flex-shrink:0}
+#btn-toggle-map:hover{background:rgba(255,255,255,.15)}
+#btn-toggle-map.map-off{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.7)}
+/* form edificio */
+#edificio-search-row{display:flex;gap:6px;margin-bottom:8px}
+#edificio-search-row input{flex:1}
+#edificio-search-row button{padding:8px 12px;border-radius:6px;border:none;background:var(--pu);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.edificio-result{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--brd);border-radius:7px;margin-bottom:5px;cursor:pointer;transition:.12s;background:var(--bg)}
+.edificio-result:hover,.edificio-result.sel{border-color:var(--pum);background:var(--pul)}
+.edificio-nome{font-size:13px;font-weight:500;flex:1;line-height:1.3}
+.edificio-addr{font-size:10px;color:var(--mut)}
+@media(max-width:640px){
+  :root{--pan:100%}
+  .layout{flex-direction:column}
+  #map{height:44dvh;flex:none}
+  .panel{width:100%;flex:1;border-left:none;border-top:1px solid var(--brd)}
+  .legend{bottom:6px}
+  .view-switcher{top:auto;bottom:90px;right:8px}
+}
+/* ── SCHERMATA SELEZIONE RUOLO ─────────────────────────────────────────────── */
+#role-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  padding:20px;
+}
+.role-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:500px}
+.role-card{
+  padding:18px 16px;border-radius:14px;border:2px solid var(--brd);
+  background:var(--sur);cursor:pointer;transition:.18s;text-align:left;
+  font-family:inherit;
+}
+.role-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.1)}
+.role-card.rc-cittadino:hover{border-color:#1A4F7A;background:#E6F0FA}
+.role-card.rc-operaio:hover{border-color:#C94E00;background:#FDF0E6}
+.role-card.rc-ufficio:hover{border-color:#1E6B3C;background:#E6F3EC}
+.role-card.rc-admin:hover{border-color:#7B4FA6;background:#F3ECF9}
+.rc-icon{font-size:28px;margin-bottom:6px}
+.rc-label{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:3px}
+.rc-desc{font-size:11px;color:var(--mut);line-height:1.4}
+/* cerca codice in alto nella scelta ruolo */
+.role-cerca-box{
+  width:100%;max-width:500px;background:var(--sur);border:1px solid var(--brd);
+  border-radius:12px;padding:14px 16px;margin-top:16px
+}
+.role-cerca-box .rc-title{font-size:12px;font-weight:700;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.role-cerca-row{display:flex;gap:8px}
+.role-cerca-row input{flex:1}
+.role-cerca-row button{padding:8px 14px;border-radius:6px;border:none;background:var(--gr);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── BADGE RUOLO IN HEADER ─────────────────────────────────────────────────── */
+#ruolo-badge{margin-left:auto;display:flex;align-items:center}
+
+/* ── TAB SEGNALAZIONI ──────────────────────────────────────────────────────── */
+#tab-segn{padding:14px 13px}
+.segn-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.segn-draw-btn{
+  flex:1;min-width:80px;display:flex;flex-direction:column;align-items:center;
+  gap:4px;padding:12px 8px;border:1.5px dashed var(--brd);border-radius:8px;
+  background:var(--bg);cursor:pointer;font-size:12px;color:var(--mut);
+  font-family:inherit;transition:.13s
+}
+.segn-draw-btn:hover{border-color:var(--gr);background:var(--gl);color:var(--gr)}
+#hint-segn{margin-bottom:12px}
+#panel-segn-form{display:none}
+
+/* ── FILTRO SEGNALAZIONI ────────────────────────────────────────────────────── */
+.segn-filtri{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+
+/* ── MODAL SEGNALAZIONE DETTAGLIO ───────────────────────────────────────────── */
+.sd-row{margin-bottom:10px;font-size:13px;line-height:1.5}
+.sd-label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
+
+/* ── MODAL CODICE RICEVUTA ──────────────────────────────────────────────────── */
+.ricevuta-box{text-align:center;padding:8px}
+.ricevuta-codice{
+  font-family:'DM Mono',monospace;font-size:36px;font-weight:700;
+  color:var(--gr);letter-spacing:6px;margin:16px 0;
+  background:var(--gl);border:2px solid var(--gm);border-radius:12px;
+  padding:16px 20px;display:inline-block
+}
+.ricevuta-avviso{font-size:12px;color:var(--mut);line-height:1.6;margin-top:8px}
+
+/* ── TAB CERCA CODICE ───────────────────────────────────────────────────────── */
+#tab-cerca{padding:14px 13px}
+
+/* ── LEGENDA SEGNALAZIONI ───────────────────────────────────────────────────── */
+.leg-segn-row{display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--brd)}
+
+/* ── MODAL OPERAIO ──────────────────────────────────────────────────────────── */
+#modal-operaio .mbox select option[value=non_svolto]{color:var(--rd);font-weight:600}
+
+@media(max-width:640px){
+  .role-card-grid{grid-template-columns:1fr 1fr}
+}
+
+</style>
+</head>
+
+<!-- ══ SCHERMATA SELEZIONE RUOLO ══════════════════════════════════════════════ -->
+<div id="role-screen" style="display:flex">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:24px;margin-bottom:6px">🏘️</div>
+    <h2 style="font-size:18px;font-weight:700;color:var(--txt);margin-bottom:4px">Pulizie Urbane – Castel di Lama</h2>
+    <p style="font-size:13px;color:var(--mut)">Seleziona il tuo profilo per accedere</p>
+  </div>
+  <div class="role-card-grid">
+    <button class="role-card rc-cittadino" onclick="selezionaRuolo('cittadino')">
+      <div class="rc-icon">👤</div>
+      <div class="rc-label">Cittadino</div>
+      <div class="rc-desc">Visualizza lavori e invia segnalazioni</div>
+    </button>
+    <button class="role-card rc-operaio" onclick="selezionaRuolo('operaio')">
+      <div class="rc-icon">👷</div>
+      <div class="rc-label">Operaio</div>
+      <div class="rc-desc">Gestisce e rendiconta i lavori</div>
+    </button>
+    <button class="role-card rc-ufficio" onclick="selezionaRuolo('ufficio')">
+      <div class="rc-icon">🏢</div>
+      <div class="rc-label">Ufficio Tecnico</div>
+      <div class="rc-desc">Programma, modifica, gestisce segnalazioni</div>
+    </button>
+    <button class="role-card rc-admin" onclick="selezionaRuolo('admin')">
+      <div class="rc-icon">👔</div>
+      <div class="rc-label">Amministratore</div>
+      <div class="rc-desc">Accesso completo in visualizzazione</div>
+    </button>
+  </div>
+  <!-- Cerca per codice anonima (senza ruolo) -->
+  <div class="role-cerca-box">
+    <div class="rc-title">🔍 Traccia la tua segnalazione</div>
+    <div class="role-cerca-row">
+      <input type="text" id="cerca-codice-guest" placeholder="Es. 0042731" maxlength="7"
+        onkeydown="if(event.key==='Enter')cercaCodiceGuest()" style="font-family:'DM Mono',monospace;letter-spacing:2px">
+      <button onclick="cercaCodiceGuest()">Cerca</button>
+    </div>
+    <div id="cerca-codice-guest-risultati" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ══ APP PRINCIPALE ══════════════════════════════════════════════════════════ -->
+<div id="main-app" style="display:none;height:100dvh;flex-direction:column">
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  <h1>Pulizie Urbane – Castel di Lama</h1>
+  <span class="hd" id="hdate"></span>
+  <div id="ruolo-badge"></div>
+  <button onclick="migraLocalStorage()" title="Importa dati da localStorage a Supabase (una tantum)" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:10px;font-family:inherit;cursor:pointer;opacity:.75" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">⬆ Migra dati</button>
+  <button id="btn-logout" onclick="tornaSceltaRuolo()" title="Cambia profilo"
+    style="margin-left:4px;padding:5px 11px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;font-size:11px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:.13s"
+    onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='transparent'">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Esci
+  </button>
+  <button id="btn-toggle-map" onclick="toggleMappa()" title="Mostra/nascondi mappa">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    <span id="btn-toggle-map-label">Solo schede</span>
+  </button>
+</header>
+<div class="layout">
+  <div id="map">
+    <div class="view-switcher">
+      <button class="vs-btn on" onclick="setView('osm')">🗺 Mappa</button>
+      <button class="vs-btn" onclick="setView('sat')">🛰 Satellite</button>
+    </div>
+    <!-- MIRINO FISSO AL CENTRO -->
+    <!-- MIRINO FISSO AL CENTRO -->
+    <div id="crosshair"><div id="crosshair-dot"></div></div>
+    <!-- TOOLBAR DISEGNO PRINCIPALE (alto sinistra) -->
+    <div id="draw-toolbar" onclick="event.stopPropagation()" style="display:flex;position:absolute;top:10px;left:10px;z-index:1000;background:#fff;border-radius:12px;padding:7px 10px;gap:7px;box-shadow:0 2px 12px rgba(0,0,0,.2);border:1px solid var(--brd);flex-direction:column">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);padding:0 2px 2px">Disegna</div>
+      <div style="display:flex;gap:7px">
+        <button onclick="avviaDisegno('punto')" style="padding:7px 13px;border-radius:8px;border:none;background:#7B4FA6;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>Punto
+        </button>
+        <button onclick="avviaDisegno('line')" style="padding:7px 13px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 20L21 4"/></svg>Linea
+        </button>
+        <button onclick="avviaDisegno('polygon')" style="padding:7px 13px;border-radius:8px;border:none;background:var(--gr);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12,2 22,20 2,20"/></svg>Poligono
+        </button>
+      </div>
+    </div>
+    <!-- TOOLBAR DISEGNO ATTIVO (alto sinistra) -->
+    <div id="draw-toolbar-active" onclick="event.stopPropagation()" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:#fff;border-radius:12px;padding:7px 10px;gap:7px;box-shadow:0 2px 12px rgba(0,0,0,.2);border:2px solid var(--bl);align-items:center;white-space:nowrap;flex-wrap:wrap">
+      <span id="draw-tipo-label" style="font-size:12px;color:var(--bl);font-weight:600"></span>
+      <span id="draw-cnt" style="font-size:12px;color:var(--mut);background:var(--bg);padding:2px 8px;border-radius:10px">0</span> punti
+      <button id="btn-punto-piazza" onclick="confermaPunto()" style="display:none;padding:6px 14px;border-radius:8px;border:none;background:#7B4FA6;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📍 Posiziona</button>
+      <button id="btn-aggiungi-punto" onclick="aggiungiPuntoDisegno(map.getCenter())" style="padding:6px 14px;border-radius:8px;border:none;background:var(--bl);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">＋ Punto</button>
+      <button onclick="undoUltimoPunto()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--brd);background:transparent;font-size:12px;cursor:pointer;font-family:inherit;color:var(--mut)">↩</button>
+      <button onclick="completaDisegno()" style="padding:6px 14px;border-radius:8px;border:none;background:var(--gr);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✓ Fine</button>
+      <button onclick="annullaDisegno()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--brd);background:transparent;font-size:12px;cursor:pointer;font-family:inherit;color:var(--rd)">✕</button>
+    </div>
+    <!-- TOOLBAR TAGLIO AREA (alto sinistra) -->
+    <div id="draw-toolbar-taglio" onclick="event.stopPropagation()" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:#fff;border-radius:12px;padding:7px 10px;gap:7px;box-shadow:0 2px 12px rgba(0,0,0,.2);border:2px solid var(--or);align-items:center;white-space:nowrap">
+      <span style="font-size:12px;color:var(--or);font-weight:600">✂️ Linea taglio</span>
+      <span id="taglio-cnt" style="font-size:12px;color:var(--mut);background:var(--bg);padding:2px 8px;border-radius:10px">0</span> punti
+      <button onclick="aggiungiPuntoDisegno(map.getCenter())" style="padding:6px 14px;border-radius:8px;border:none;background:var(--or);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">＋ Punto</button>
+      <button onclick="undoUltimoPunto()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--brd);background:transparent;font-size:12px;cursor:pointer;font-family:inherit;color:var(--mut)">↩</button>
+      <button onclick="completaDisegno()" style="padding:6px 14px;border-radius:8px;border:none;background:var(--gr);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✓ Fine</button>
+      <button onclick="annullaDisegno()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--brd);background:transparent;font-size:12px;cursor:pointer;font-family:inherit;color:var(--rd)">✕</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ptabs">
+      <button class="ptab on" data-tab="prog">➕ Programma</button>
+      <button class="ptab" data-tab="da-fare">🔴 Da fare <span id="cnt-df" class="badge brd2" style="margin-left:2px">0</span></button>
+      <button class="ptab" data-tab="parziali">🟠 Parziali <span id="cnt-pa" class="badge bor" style="margin-left:2px">0</span></button>
+      <button class="ptab" data-tab="completati">🟢 Completati <span id="cnt-co" class="badge bgr" style="margin-left:2px">0</span></button>
+      <button class="ptab" data-tab="segn">📢 Segnalazioni <span id="cnt-segn" class="badge" style="margin-left:2px;background:var(--ol);color:var(--or);display:none"></span></button>
+      <button class="ptab" data-tab="cerca">🔍 Codice</button>
+    </div>
+
+    <!-- TAB PROGRAMMA -->
+    <div class="pbody" id="tab-prog">
+      <div class="hint" id="hint-main">
+        <b id="hint-main-title">✏️ Disegna la zona da pulire</b>
+        <span id="hint-main-map-text">Usa i pulsanti sulla mappa: <b>Punto</b> per segnalazioni, <b>Linea</b> per strade, <b>Poligono</b> per aree.<br></span>
+        Oppure usa <b>Punto edificio</b> per attività interne a un edificio specifico.
+      </div>
+      <!-- PULSANTE PUNTO EDIFICIO -->
+      <div id="edificio-btn-wrap" style="margin-bottom:12px">
+        <button onclick="avviaEdificio()" style="width:100%;padding:9px 12px;border-radius:8px;border:1.5px dashed var(--pum);background:var(--pul);color:var(--pu);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;justify-content:center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10"/><path d="M3 9h18"/></svg>
+          📍 Punto edificio
+        </button>
+      </div>
+      <!-- FORM PUNTO EDIFICIO -->
+      <div id="edificio-form-wrap" style="display:none">
+        <div class="hint" style="background:var(--pul);border-color:var(--pum);color:var(--pu)">
+          <b>🏢 Cerca l'edificio</b>
+          Digita l'indirizzo o il nome dell'edificio per posizionarlo sulla mappa.
+        </div>
+        <div id="edificio-search-row">
+          <input type="text" id="edificio-query" placeholder="Es. Municipio, Via Roma 12…" onkeydown="if(event.key==='Enter')cercaEdificio()">
+          <button onclick="cercaEdificio()">🔍 Cerca</button>
+        </div>
+        <div id="edificio-results"></div>
+        <button class="btn btn-g" onclick="chiudiEdificio()" style="margin-top:4px">↩ Annulla</button>
+      </div>
+      <div class="loader" id="loader"><span class="spin"></span>Ricerca nome zona…</div>
+      <div id="area-match" style="display:none">
+        <div class="mlabel">Zone trovate — seleziona</div>
+        <div id="match-list"></div>
+        <button class="btn btn-g" onclick="resetDisegno()">↩ Ridisegna</button>
+      </div>
+      <div id="area-form" style="display:none">
+        <div class="hint info" id="hint-sel"></div>
+        <div class="fg"><label class="fl">Nome zona</label><input type="text" id="f-nome"></div>
+        <div class="fg"><label class="fl">Data</label><input type="date" id="f-data"></div>
+        <div class="fg">
+          <label class="fl">Tipo intervento</label>
+          <select id="f-tipo">
+            <option>Raccolta rifiuti</option><option>Spazzamento stradale</option>
+            <option>Pulizia parco / area verde</option><option>Diserbo marciapiedi</option>
+            <option>Svuotamento cestini</option><option>Pulizia piazza</option><option>Altro</option>
+          </select>
+        </div>
+        <div class="mlabel">Operatori</div>
+        <div class="ops" id="ops-grid"></div>
+        <div class="fg"><label class="fl">Note</label><textarea id="f-note" placeholder="Priorità, attrezzatura…"></textarea></div>
+        <button class="btn btn-p" onclick="salvaLavoro()">💾 Salva intervento</button>
+        <button class="btn btn-g" onclick="resetDisegno()">↩ Ricomincia</button>
+      </div>
+    </div>
+
+    <!-- TAB DA FARE -->
+    <div id="tab-da-fare" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="filtri-wrap">
+        <div class="filtri-row">
+          <span class="filtri-label">Periodo</span>
+          <button class="fp on" data-tab="da-fare" data-p="tutti" onclick="setFiltroP('da-fare','tutti')">Tutti</button>
+          <button class="fp" data-tab="da-fare" data-p="oggi" onclick="setFiltroP('da-fare','oggi')">Oggi</button>
+          <button class="fp" data-tab="da-fare" data-p="settimana" onclick="setFiltroP('da-fare','settimana')">Questa settimana</button>
+          <button class="fp" data-tab="da-fare" data-p="prossima" onclick="setFiltroP('da-fare','prossima')">Prossima sett.</button>
+          <button class="fp" data-tab="da-fare" data-p="range" onclick="setFiltroP('da-fare','range')">Intervallo</button>
+          <span class="filtri-cnt" id="fcnt-da-fare"></span>
+          <button id="btn-stampa-df" onclick="apriModalStampa()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Stampa PDF
+          </button>
+        </div>
+        <div class="filtri-range" id="frange-da-fare">
+          <input type="date" id="frange-da-fare-da"> <span style="font-size:12px;color:var(--mut)">→</span>
+          <input type="date" id="frange-da-fare-a">
+          <button class="fp fp-apply" onclick="applicaRange('da-fare')">Applica</button>
+        </div>
+        <div class="filtri-row">
+          <span class="filtri-label">Tipo</span>
+          <div class="tipi-filtro" id="tipi-da-fare"></div>
+        </div>
+      </div>
+      <div class="pbody-with-filter">
+        <div id="list-da-fare"></div>
+      </div>
+    </div>
+
+    <!-- TAB PARZIALI -->
+    <div id="tab-parziali" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="filtri-wrap">
+        <div class="filtri-row">
+          <span class="filtri-label">Periodo</span>
+          <button class="fp on" data-tab="parziali" data-p="tutti" onclick="setFiltroP('parziali','tutti')">Tutti</button>
+          <button class="fp" data-tab="parziali" data-p="oggi" onclick="setFiltroP('parziali','oggi')">Oggi</button>
+          <button class="fp" data-tab="parziali" data-p="settimana" onclick="setFiltroP('parziali','settimana')">Questa settimana</button>
+          <button class="fp" data-tab="parziali" data-p="7gg" onclick="setFiltroP('parziali','7gg')">Ultimi 7 gg</button>
+          <button class="fp" data-tab="parziali" data-p="mese" onclick="setFiltroP('parziali','mese')">Questo mese</button>
+          <button class="fp" data-tab="parziali" data-p="range" onclick="setFiltroP('parziali','range')">Intervallo</button>
+          <span class="filtri-cnt" id="fcnt-parziali"></span>
+        </div>
+        <div class="filtri-range" id="frange-parziali">
+          <input type="date" id="frange-parziali-da"> <span style="font-size:12px;color:var(--mut)">→</span>
+          <input type="date" id="frange-parziali-a">
+          <button class="fp fp-apply" onclick="applicaRange('parziali')">Applica</button>
+        </div>
+        <div class="filtri-row">
+          <span class="filtri-label">Tipo</span>
+          <div class="tipi-filtro" id="tipi-parziali"></div>
+        </div>
+      </div>
+      <div class="pbody-with-filter">
+        <div id="list-parziali"></div>
+      </div>
+    </div>
+
+    <!-- TAB COMPLETATI -->
+    <div id="tab-completati" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="filtri-wrap">
+        <div class="filtri-row">
+          <span class="filtri-label">Periodo</span>
+          <button class="fp on" data-tab="completati" data-p="tutti" onclick="setFiltroP('completati','tutti')">Tutti</button>
+          <button class="fp" data-tab="completati" data-p="oggi" onclick="setFiltroP('completati','oggi')">Oggi</button>
+          <button class="fp" data-tab="completati" data-p="settimana" onclick="setFiltroP('completati','settimana')">Questa settimana</button>
+          <button class="fp" data-tab="completati" data-p="7gg" onclick="setFiltroP('completati','7gg')">Ultimi 7 gg</button>
+          <button class="fp" data-tab="completati" data-p="mese" onclick="setFiltroP('completati','mese')">Questo mese</button>
+          <button class="fp" data-tab="completati" data-p="range" onclick="setFiltroP('completati','range')">Intervallo</button>
+          <span class="filtri-cnt" id="fcnt-completati"></span>
+        </div>
+        <div class="filtri-range" id="frange-completati">
+          <input type="date" id="frange-completati-da"> <span style="font-size:12px;color:var(--mut)">→</span>
+          <input type="date" id="frange-completati-a">
+          <button class="fp fp-apply" onclick="applicaRange('completati')">Applica</button>
+        </div>
+        <div class="filtri-row">
+          <span class="filtri-label">Tipo</span>
+          <div class="tipi-filtro" id="tipi-completati"></div>
+        </div>
+      </div>
+      <div class="pbody-with-filter">
+        <div id="list-completati"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    <!-- TAB SEGNALAZIONI -->
+    <div id="tab-segn" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="pbody-with-filter" id="tab-segn-body">
+        <!-- Sezione segnala (per chi può segnalare) -->
+        <div id="segn-sezione-form">
+          <!-- Hint iniziale: spiega di usare la toolbar sulla mappa -->
+          <div class="hint" id="hint-segn" style="display:block">
+            <b>📢 Invia una segnalazione</b>
+            Usa i pulsanti <b>Punto</b>, <b>Linea</b> o <b>Poligono</b> in alto a sinistra sulla mappa per indicare la zona che necessita di intervento.<br>
+            <span style="font-size:11px;opacity:.8">Dopo aver completato il disegno (✓ Fine) apparirà il modulo.</span>
+          </div>
+          <!-- Form: appare solo dopo che il disegno è completato -->
+          <div id="panel-segn-form" style="display:none">
+            <div class="hint info" style="margin-bottom:10px" id="hint-segn-geom"></div>
+            <div class="fg">
+              <label class="fl">Tipo intervento richiesto</label>
+              <select id="segn-tipo">
+                <option>Raccolta rifiuti</option><option>Spazzamento stradale</option>
+                <option>Pulizia parco / area verde</option><option>Diserbo marciapiedi</option>
+                <option>Svuotamento cestini</option><option>Pulizia piazza</option><option>Altro</option>
+              </select>
+            </div>
+            <div class="fg"><label class="fl">Descrizione (opzionale)</label>
+              <textarea id="segn-desc" placeholder="Descrivi il problema…" style="min-height:60px"></textarea>
+            </div>
+            <button class="btn btn-p" onclick="salvaSegnalazioneForm()">📢 Invia segnalazione</button>
+            <button class="btn btn-g" onclick="resetSegnForm()">↩ Ridisegna</button>
+          </div>
+        </div>
+        <!-- Sezione lista segnalazioni (per ufficio + admin) -->
+        <div id="segn-sezione-lista" style="display:none">
+          <div class="filtri-wrap" style="margin:-14px -13px 12px;padding:10px 12px">
+            <div class="filtri-row">
+              <span class="filtri-label">Stato</span>
+              <select id="filtro-segn-stato" onchange="renderListaSegnalazioni()" style="width:auto;flex:none;padding:5px 8px;font-size:12px">
+                <option value="tutte">Tutte</option>
+                <option value="attesa">In attesa</option>
+                <option value="accettata">Accettate</option>
+                <option value="rifiutata">Rifiutate</option>
+              </select>
+            </div>
+          </div>
+          <div id="list-segnalazioni"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CERCA CODICE -->
+    <div id="tab-cerca" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="pbody-with-filter">
+        <div class="hint info">
+          <b>🔍 Traccia la tua segnalazione</b>
+          Inserisci il codice a 7 cifre ricevuto quando hai inviato la segnalazione.
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" id="cerca-codice-input" placeholder="Es. 0042731" maxlength="7"
+            onkeydown="if(event.key==='Enter')cercaCodice()"
+            style="font-family:'DM Mono',monospace;letter-spacing:3px;font-size:16px;text-align:center">
+          <button class="btn btn-p" style="width:auto;padding:8px 16px" onclick="cercaCodice()">Cerca</button>
+        </div>
+        <div id="cerca-codice-risultati"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="legend" id="mappa-legenda">
+  <div class="legend-title">Visualizza</div>
+  <div class="li" id="leg-red" onclick="toggleLegenda('red')">
+    <input type="checkbox" class="li-check" id="leg-chk-red" checked onclick="event.stopPropagation();toggleLegenda('red')">
+    <div class="lc" style="background:#B83025"></div>
+    <span class="li-label">Da fare</span>
+  </div>
+  <div class="li" id="leg-orange" onclick="toggleLegenda('orange')">
+    <input type="checkbox" class="li-check" id="leg-chk-orange" checked onclick="event.stopPropagation();toggleLegenda('orange')">
+    <div class="lc" style="background:#E67E22"></div>
+    <span class="li-label">Parziale</span>
+  </div>
+  <div class="li" id="leg-green" onclick="toggleLegenda('green')">
+    <input type="checkbox" class="li-check" id="leg-chk-green" checked onclick="event.stopPropagation();toggleLegenda('green')">
+    <div class="lc" style="background:#1E6B3C"></div>
+    <span class="li-label">Completato</span>
+  </div>
+  <div id="leg-segnalazioni" class="leg-segn-row" style="display:none">
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:center;gap:6px"><div class="lc-dot" style="background:#0D3B6E"></div><span class="li-label" style="font-size:10px">Segn. Cittadino</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><div class="lc-dot" style="background:#00B4D8"></div><span class="li-label" style="font-size:10px">Segn. Operaio</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><div class="lc-dot" style="background:#C2185B"></div><span class="li-label" style="font-size:10px">Segn. Amministratore</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR MODIFICA GEOMETRIA -->
+<div id="edit-toolbar" style="display:none;position:fixed;top:52px;left:0;right:0;z-index:1500;background:#fff;border-bottom:2px solid var(--bl);padding:10px 14px;box-shadow:0 2px 10px rgba(0,0,0,.12)">
+  <div style="max-width:700px;margin:0 auto">
+    <div style="font-size:12px;font-weight:600;color:var(--bl);margin-bottom:4px">✏️ Modifica geometria: <span id="edit-toolbar-nome" style="font-weight:400"></span></div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <div style="font-size:11px;color:var(--mut);flex:1;min-width:150px" id="edit-info">
+        <b>Trascina</b> i punti arancioni per spostarli · <b>Trascina</b> i ◦ bianchi per aggiungere un punto · <b>Doppio tap</b> su un punto per eliminarlo
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button id="btn-edit-sposta" style="display:none"></button>
+        <button id="btn-edit-del" style="display:none"></button>
+        <button onclick="terminaModifica(false)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--brd);background:transparent;font-size:12px;cursor:pointer;font-family:inherit;color:var(--mut)">Annulla</button>
+        <button onclick="terminaModifica(true)" style="padding:6px 14px;border-radius:6px;border:none;background:var(--gr);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✓ Salva</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONSUNTIVO -->
+<div class="mover" id="modal">
+  <div class="mbox">
+    <h3>Chiudi intervento</h3>
+    <div class="msub" id="msub"></div>
+    <div class="fg"><label class="fl">Stato</label>
+      <select id="mstato" onchange="toggleModalParziale()">
+        <option value="green">✅ Completato</option>
+        <option value="orange">⚠️ Parzialmente completato</option>
+      </select>
+    </div>
+    <div id="modal-parziale" style="display:none">
+      <div class="fg"><label class="fl">Cosa manca ancora?</label>
+        <textarea id="mnota" placeholder="Descrivi cosa rimane…"></textarea>
+      </div>
+    </div>
+    <div class="mlabel" style="margin-top:8px">Foto del lavoro svolto</div>
+    <div class="foto-src-row">
+      <button class="foto-src-btn" onclick="document.getElementById('mfi-file').click()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        Da file
+        <input type="file" id="mfi-file" accept="image/*" multiple onchange="aggFoto(event)" style="display:none">
+      </button>
+      <button class="foto-src-btn" onclick="document.getElementById('mfi-cam').click()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Fotocamera
+        <input type="file" id="mfi-cam" accept="image/*" capture="environment" onchange="aggFoto(event)" style="display:none">
+      </button>
+    </div>
+    <div class="foto-grid" id="modal-foto-grid"></div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-p" onclick="salvaConsuntivo()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- BANNER SELEZIONE PARZIALE -->
+<div id="partial-banner">
+  <div class="pb-inner">
+    <div class="pb-title" id="pb-title">🟢 Seleziona il tratto completato</div>
+    <div class="pb-sub" id="pb-sub"></div>
+    <!-- Indicatori strada -->
+    <div id="pb-strada">
+      <div class="pb-row"><div class="pb-dot" id="dot-s"></div><span id="lbl-s" style="color:var(--mut)">Punto inizio: non selezionato</span></div>
+      <div class="pb-row"><div class="pb-dot" id="dot-e"></div><span id="lbl-e" style="color:var(--mut)">Punto fine: non selezionato</span></div>
+    </div>
+    <!-- Indicatori area: seleziona 2 punti sul perimetro -->
+    <div id="pb-area" style="display:none">
+      <div style="font-size:12px;color:var(--mut);margin-bottom:8px;line-height:1.5">
+        Tocca <b>due punti</b> sul perimetro per dividere l'area. L'arco tra i due punti diventa la zona completata (verde), il resto rimane da fare (arancione). Poi scegli quale delle due zone è stata pulita.
+      </div>
+      <div class="pb-row"><div class="pb-dot" id="dot-t1"></div><span id="lbl-t1" style="color:var(--mut)">Punto 1: non selezionato</span></div>
+      <div class="pb-row"><div class="pb-dot" id="dot-t2"></div><span id="lbl-t2" style="color:var(--mut)">Punto 2: non selezionato</span></div>
+      <div class="zona-scelta" id="zona-scelta">
+        <div style="font-size:11px;font-weight:700;color:var(--gr);margin-bottom:6px">Quale zona è stata completata?</div>
+        <div class="zs-btns">
+          <button class="zs-btn" id="btn-za" onclick="selZona(0)">Arco A (breve)</button>
+          <button class="zs-btn" id="btn-zb" onclick="selZona(1)">Arco B (lungo)</button>
+        </div>
+      </div>
+    </div>
+    <div class="pb-btns">
+      <button class="pb-btn pb-btn-annulla" onclick="annullaParziale()">Annulla</button>
+      <button class="pb-btn pb-btn-conferma" id="btn-conf" onclick="confermaParziale()">✓ Conferma</button>
+      <button class="pb-btn pb-btn-reset" onclick="resetParziale()">↩ Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RIPROGRAMMA -->
+<div class="mover" id="modal-riprog">
+  <div class="mbox">
+    <h3>🔄 Riprogramma intervento</h3>
+    <div class="msub" id="riprog-sub"></div>
+    <div class="fg"><label class="fl">Nuova data</label><input type="date" id="riprog-data"></div>
+    <div class="mlabel">Operatori</div>
+    <div class="ops" id="riprog-ops"></div>
+    <div class="fg"><label class="fl">Note aggiuntive</label><textarea id="riprog-note" placeholder="Indicazioni per il nuovo intervento…"></textarea></div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="closeRiprog()">Annulla</button>
+      <button class="btn btn-p" onclick="salvaRiprog()">✓ Riprogramma</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MODIFICA INTERVENTO DA FARE -->
+<div class="mover" id="modal-edit-lav">
+  <div class="mbox" style="max-width:460px">
+    <h3>✏️ Modifica intervento</h3>
+    <div class="msub" id="medit-sub"></div>
+
+    <div class="medit-section">
+      <div class="fg"><label class="fl">Nome / zona</label><input type="text" id="medit-nome"></div>
+      <div class="fg"><label class="fl">Data programmata</label><input type="date" id="medit-data"></div>
+      <div class="fg">
+        <label class="fl">Tipo intervento</label>
+        <select id="medit-tipo">
+          <option>Raccolta rifiuti</option><option>Spazzamento stradale</option>
+          <option>Pulizia parco / area verde</option><option>Diserbo marciapiedi</option>
+          <option>Svuotamento cestini</option><option>Pulizia piazza</option><option>Altro</option>
+        </select>
+      </div>
+      <div class="mlabel">Operatori</div>
+      <div class="ops" id="medit-ops"></div>
+      <div class="fg" style="margin-top:8px"><label class="fl">Note</label>
+        <textarea id="medit-note" placeholder="Priorità, attrezzatura…"></textarea>
+      </div>
+    </div>
+
+    <div class="medit-section">
+      <div class="mlabel">Geometria / posizione</div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:8px;line-height:1.55">
+        Puoi modificare la forma dell'area/linea o spostare il punto direttamente sulla mappa.
+      </div>
+      <div class="medit-geom-row">
+        <button class="medit-geom-btn" id="medit-btn-geom" onclick="avviaModificaGeomDaModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Modifica su mappa
+        </button>
+        <button class="medit-geom-btn" id="medit-btn-punto" onclick="avviaModificaPuntoDaModal()" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+          Sposta punto
+        </button>
+      </div>
+      <div id="medit-geom-hint" style="display:none;margin-top:8px;padding:8px 10px;border-radius:7px;background:var(--bll);border:1px solid #9FC6E8;font-size:12px;color:var(--bl)">
+        <b>Modifica attiva</b> — usa gli strumenti sulla mappa, poi torna qui e clicca <b>Salva modifiche</b>.
+      </div>
+    </div>
+
+    <div class="macts" style="margin-top:14px">
+      <button class="btn btn-g" onclick="chiudiEditLav()">Annulla</button>
+      <button class="btn btn-p" onclick="salvaEditLav()">💾 Salva modifiche</button>
+    </div>
+  </div>
+</div>
+
+<!-- MENU CONTESTUALE MAPPA -->
+<div id="map-menu" style="display:none;position:fixed;z-index:3000;background:#fff;border:0.5px solid var(--brd);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.18);min-width:190px;overflow:hidden">
+  <div id="map-menu-title" style="padding:9px 14px;font-size:12px;font-weight:600;color:var(--txt);border-bottom:1px solid var(--brd);background:var(--bg)"></div>
+  <div id="map-menu-items"></div>
+</div>
+
+<!-- MODAL SCELTA PERIODO STAMPA -->
+<div class="mover" id="modal-stampa">
+  <div class="mbox" style="max-width:380px">
+    <h3>🖨 Stampa ordine dei lavori</h3>
+    <div class="msub" style="margin-bottom:16px">Scegli il periodo da stampare come PDF</div>
+    <button class="print-period-btn" onclick="stampaPDF('oggi')">
+      <span class="pp-icon">📅</span>
+      <div>
+        Oggi
+        <span class="pp-desc" id="pp-desc-oggi"></span>
+      </div>
+    </button>
+    <button class="print-period-btn" onclick="stampaPDF('settimana')">
+      <span class="pp-icon">📆</span>
+      <div>
+        Questa settimana
+        <span class="pp-desc" id="pp-desc-settimana"></span>
+      </div>
+    </button>
+    <button class="print-period-btn" onclick="stampaPDF('prossima')">
+      <span class="pp-icon">🗓</span>
+      <div>
+        Prossima settimana
+        <span class="pp-desc" id="pp-desc-prossima"></span>
+      </div>
+    </button>
+    <button class="btn btn-g" onclick="chiudiModalStampa()" style="margin-top:6px">Annulla</button>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+
+<!-- MODAL DETTAGLIO SEGNALAZIONE -->
+<div class="mover" id="modal-segn-dettaglio">
+  <div class="mbox" style="max-width:440px">
+    <h3>📋 Segnalazione</h3>
+    <div class="msub" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span id="sd-codice" style="font-family:'DM Mono';font-size:15px;font-weight:700"></span>
+      <span id="sd-fonte"></span>
+      <span id="sd-stato"></span>
+    </div>
+    <div class="sd-row"><div class="sd-label">Tipo intervento</div><div id="sd-tipo"></div></div>
+    <div class="sd-row"><div class="sd-label">Descrizione</div><div id="sd-desc" style="color:var(--mut)"></div></div>
+    <div class="sd-row"><div class="sd-label">Data segnalazione</div><div id="sd-data" style="color:var(--mut)"></div></div>
+    <div id="sd-motiv-wrap" style="display:none">
+      <div class="sd-label" style="color:var(--rd)">Motivazione rifiuto</div>
+      <div id="sd-motiv" style="font-size:12px;color:var(--rd);background:var(--rl);padding:8px 10px;border-radius:6px;margin-top:4px"></div>
+    </div>
+    <div id="sd-azioni"></div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="chiudiDettaglioSegn()">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RIFIUTA SEGNALAZIONE -->
+<div class="mover" id="modal-rifiuta">
+  <div class="mbox" style="max-width:400px">
+    <h3>❌ Rifiuta segnalazione</h3>
+    <div class="msub">Inserisci la motivazione del rifiuto — sarà visibile al segnalante.</div>
+    <div class="fg">
+      <label class="fl">Motivazione</label>
+      <textarea id="modal-rifiuta-motiv" placeholder="Es. Intervento già programmato, non di competenza…" style="min-height:80px"></textarea>
+    </div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="chiudiRifiutaSegn()">Annulla</button>
+      <button class="btn" style="background:var(--rd);color:#fff" onclick="confermaRifiuta()">❌ Conferma rifiuto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CODICE RICEVUTA -->
+<div class="mover" id="modal-codice-ricevuta">
+  <div class="mbox" style="max-width:380px;text-align:center">
+    <h3>✅ Segnalazione inviata!</h3>
+    <div class="ricevuta-box">
+      <div style="font-size:13px;color:var(--mut);margin-bottom:8px">Il tuo codice di tracciamento è:</div>
+      <div class="ricevuta-codice" id="ricevuta-codice"></div>
+      <div class="ricevuta-avviso">
+        <b>Annotati questo codice!</b><br>
+        Con questo numero puoi verificare lo stato della tua segnalazione usando il tab <b>🔍 Codice</b>.
+      </div>
+    </div>
+    <div class="macts" style="margin-top:8px">
+      <button class="btn btn-p" onclick="chiudiRicevuta()">✓ Ho annotato il codice</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RENDICONTAZIONE OPERAIO -->
+<div class="mover" id="modal-operaio">
+  <div class="mbox">
+    <h3>📋 Rendiconta lavoro</h3>
+    <div class="msub" id="mop-sub"></div>
+    <div class="fg">
+      <label class="fl">Stato al termine della giornata</label>
+      <select id="mop-stato" onchange="toggleModalOperaioStato()">
+        <option value="green">✅ Completato</option>
+        <option value="orange">⚠️ Parzialmente completato</option>
+        <option value="non_svolto">❌ Non svolto</option>
+      </select>
+    </div>
+    <div id="mop-nota-wrap" style="display:none">
+      <div class="fg">
+        <label class="fl">Note / motivazione</label>
+        <textarea id="mop-nota" placeholder="Cosa manca? / Perché non è stato svolto?"></textarea>
+      </div>
+    </div>
+    <div class="mlabel" style="margin-top:8px">Foto del lavoro svolto</div>
+    <div class="foto-src-row">
+      <button class="foto-src-btn" onclick="document.getElementById('mop-file').click()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        Da file
+        <input type="file" id="mop-file" accept="image/*" multiple onchange="aggFotoOperaio(event)" style="display:none">
+      </button>
+      <button class="foto-src-btn" onclick="document.getElementById('mop-cam').click()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Fotocamera
+        <input type="file" id="mop-cam" accept="image/*" capture="environment" onchange="aggFotoOperaio(event)" style="display:none">
+      </button>
+    </div>
+    <div class="foto-grid" id="mop-foto-grid"></div>
+    <div class="macts">
+      <button class="btn btn-g" onclick="chiudiModalOperaio()">Annulla</button>
+      <button class="btn btn-p" onclick="salvaRendicontazioneOperaio()">💾 Salva</button>
+    </div>
+  </div>
+</div>
+
+<div class="lbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lbox-close">✕</span>
+  <img id="lbimg" src="" alt="">
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"></script>
+<script>
+// ── CONFIGURAZIONE SUPABASE ───────────────────────────────────────────────────
+// Sostituisci con i tuoi valori da Supabase → Settings → API
+const SUPABASE_URL  = 'https://kxnjmvpmeugxadxjssqh.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_yrZAaZQm7uYMo5Adasg_lw_KJAvcRuX';
+
+const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── CONVERSIONE OGGETTI JS ↔ RIGHE DB ────────────────────────────────────────
+function lavToRow(lav){
+  return {
+    id:               lav.id,
+    nome:             lav.nome,
+    nome_esteso:      lav.nomeEsteso||'',
+    data:             lav.data||null,
+    tipo:             lav.tipo||'',
+    note:             lav.note||'',
+    operatori:        lav.operatori||[],
+    stato:            lav.stato||'red',
+    geom:             lav.geom||[],
+    is_area:          !!lav.isArea,
+    is_punto:         !!lav.isPunto,
+    misura:           lav.misura||null,
+    perimetro:        lav.perimetro||null,
+    nota_mancante:    lav.notaMancante||'',
+    da_riprogrammare: !!lav.daRiprogrammare,
+    foto:             lav.foto||[]
+  };
+}
+function rowToLav(row){
+  return {
+    id:              row.id,
+    nome:            row.nome,
+    nomeEsteso:      row.nome_esteso||'',
+    data:            row.data||'',
+    tipo:            row.tipo||'',
+    note:            row.note||'',
+    operatori:       row.operatori||[],
+    stato:           row.stato||'red',
+    geom:            row.geom||[],
+    isArea:          !!row.is_area,
+    isPunto:         !!row.is_punto,
+    misura:          row.misura||0,
+    perimetro:       row.perimetro||0,
+    notaMancante:    row.nota_mancante||'',
+    daRiprogrammare: !!row.da_riprogrammare,
+    foto:            row.foto||[]
+  };
+}
+
+// ── BANNER DI STATO DB ────────────────────────────────────────────────────────
+function showDbStatus(msg, tipo='info'){
+  let bar=document.getElementById('db-status-bar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='db-status-bar';
+    bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;padding:7px 14px;font-size:12px;font-weight:600;text-align:center;transition:.3s;pointer-events:none';
+    document.body.appendChild(bar);
+  }
+  const colori={info:'#1A4F7A',ok:'#1E6B3C',err:'#B83025',warn:'#C94E00'};
+  bar.style.background=colori[tipo]||colori.info;
+  bar.style.color='#fff';
+  bar.textContent=msg;
+  bar.style.display='block';
+  if(tipo==='ok'||tipo==='info'){
+    clearTimeout(bar._t);
+    bar._t=setTimeout(()=>{bar.style.display='none';},2500);
+  }
+}
+</script>
+<script>
+const OPERATORI=[
+  {id:'a',nome:'Marco Rossi'},{id:'b',nome:'Laura Bianchi'},
+  {id:'c',nome:'Giuseppe Ferri'},{id:'d',nome:'Anna Conti'},{id:'e',nome:'Paolo Marini'}
+];
+const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+
+let lavori=[];   // caricati da Supabase all'avvio
+let overlayLayers={};
+let selectedGeom=null, selectedIsArea=false, selectedIsPunto=false, selectedMisura=0, selectedPerimetro=0;
+let matchElements=[], modalId=null, modalFotos=[];
+
+// ── MIGRAZIONE DA LOCALSTORAGE A SUPABASE (usa una sola volta) ──────────────
+async function migraLocalStorage(){
+  const raw=localStorage.getItem('cdl7');
+  if(!raw){alert('Nessun dato trovato in localStorage (chiave cdl7).');return;}
+  let vecchi;
+  try{ vecchi=JSON.parse(raw); }catch(e){alert('Dati localStorage corrotti: '+e.message);return;}
+  if(!Array.isArray(vecchi)||!vecchi.length){alert('localStorage è vuoto o non valido.');return;}
+  if(!confirm('Importare '+vecchi.length+' interventi da localStorage a Supabase?\nEseguire SOLO UNA VOLTA. Continuare?')) return;
+  showDbStatus('\u23f3 Migrazione di '+vecchi.length+' interventi in corso...','info');
+  let ok=0, err=0;
+  for(let i=0;i<vecchi.length;i++){
+    const lav=vecchi[i];
+    showDbStatus('\u23f3 Migrazione '+(i+1)+'/'+vecchi.length+': '+lav.nome+'...','info');
+    try{
+      const row=lavToRow(lav);
+      const {error}=await _supa.from('lavori').upsert(row,{onConflict:'id'});
+      if(error){
+        err++;
+        console.error('Errore migrazione lavoro',lav.id,error);
+      } else { ok++; }
+    }catch(e){
+      err++;
+      console.error('Eccezione migrazione',lav.id,e);
+    }
+  }
+  if(err===0){
+    showDbStatus('\u2705 Migrazione completata: '+ok+'/'+vecchi.length+' interventi importati','ok');
+    localStorage.removeItem('cdl7');
+    await caricaDaSupabase();
+  } else {
+    showDbStatus('\u26a0\ufe0f Migrazione parziale: '+ok+' ok, '+err+' errori (vedi console F12)','warn');
+    if(ok>0 && confirm(ok+' importati, '+err+' falliti. Ricaricare i dati da Supabase?')){
+      await caricaDaSupabase();
+    }
+  }
+}
+
+// ── CARICAMENTO INIZIALE DA SUPABASE ─────────────────────────────────────────
+async function caricaDaSupabase(){
+  showDbStatus('⏳ Caricamento dati…','info');
+  const {data,error}=await _supa.from('lavori').select('*').order('created_at',{ascending:true});
+  if(error){
+    showDbStatus('❌ Errore connessione Supabase: '+error.message,'err');
+    console.error('Supabase load error:',error);
+    return;
+  }
+  lavori=(data||[]).map(rowToLav);
+  showDbStatus('✅ '+lavori.length+' interventi caricati','ok');
+  renderTutti();
+  renderAllOverlays();
+}
+
+// ── STATO PARZIALE ────────────────────────────────────────────────────────────
+let pLavId=null;
+let pPunti=[];        // punti interpolati (10) sul perimetro/linea
+let pMarkers=[];      // circleMarker leaflet
+let pLayer=null;      // layer gruppo punti
+// Strada
+let pIdxS=-1, pIdxE=-1;
+// Area
+let pTagli=[];        // array di indici dei punti di taglio (min 2)
+let pZona=-1;         // 0=arco A, 1=arco B
+let pTaglioGeom=null; // polilinea di taglio disegnata dall'utente
+let pTaglioLayer=null;// layer leaflet della linea di taglio
+let pDrawTaglioCtrl=null; // controllo disegno per il taglio
+
+// ── MAPPA ─────────────────────────────────────────────────────────────────────
+const tileOSM=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19});
+const tileSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:19});
+const tileLabel=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:.8});
+
+let map; // inizializzato in selezionaRuolo() dopo che #main-app è visibile
+
+function setView(v){
+  if(v==='osm'){map.removeLayer(tileSat);map.removeLayer(tileLabel);map.addLayer(tileOSM);}
+  else{map.removeLayer(tileOSM);map.addLayer(tileSat);map.addLayer(tileLabel);}
+  document.querySelectorAll('.vs-btn').forEach((b,i)=>b.classList.toggle('on',(i===0&&v==='osm')||(i===1&&v==='sat')));
+}
+
+let drawn; // init in selezionaRuolo
+let drawnTaglio; // init in selezionaRuolo
+
+// ── SISTEMA DISEGNO TOUCH-FRIENDLY ───────────────────────────────────────────
+// Stato disegno
+let drawMode=null;      // null | 'line' | 'polygon' | 'taglio'
+let drawPunti=[];       // punti accumulati
+let drawPreviewLayer=null;
+let drawMarkerLayer=null;
+
+function avviaDisegno(tipo){
+  // tipo: 'line' | 'polygon' | 'taglio'
+  drawMode=tipo;
+  drawPunti=[];
+  if(drawPreviewLayer){map.removeLayer(drawPreviewLayer);drawPreviewLayer=null;}
+  if(drawMarkerLayer){map.removeLayer(drawMarkerLayer);drawMarkerLayer=null;}
+  drawMarkerLayer=L.layerGroup().addTo(map);
+  aggiornaToolbarDisegno();
+  // Cursore crosshair
+  map.getContainer().style.cursor='crosshair';
+}
+
+function aggiungiPuntoDisegno(latlng){
+  // Accetta sia L.LatLng (da map.getCenter) che oggetti {lat,lng} o {lat,lon}
+  const lat=latlng.lat;
+  const lon=latlng.lng??latlng.lon;
+  drawPunti.push({lat,lon});
+  // Marker punto
+  L.circleMarker([latlng.lat,latlng.lng],{
+    radius:6,color:'#fff',weight:2,
+    fillColor:drawMode==='taglio'?'#1A4F7A':'#1A4F7A',fillOpacity:1
+  }).addTo(drawMarkerLayer);
+  // Preview linea/poligono
+  if(drawPreviewLayer){map.removeLayer(drawPreviewLayer);drawPreviewLayer=null;}
+  if(drawPunti.length>=2){
+    const coords=drawPunti.map(p=>[p.lat,p.lon]);
+    if(drawMode==='polygon'&&drawPunti.length>=3){
+      drawPreviewLayer=L.polygon(coords,{color:'#1A4F7A',fillOpacity:.1,weight:3,dashArray:'4,4'}).addTo(map);
+    } else {
+      drawPreviewLayer=L.polyline(coords,{color:'#1A4F7A',weight:4,dashArray:'4,4'}).addTo(map);
+    }
+  }
+  aggiornaToolbarDisegno();
+}
+
+function undoUltimoPunto(){
+  if(!drawPunti.length) return;
+  drawPunti.pop();
+  // Rifa marker
+  if(drawMarkerLayer){map.removeLayer(drawMarkerLayer);drawMarkerLayer=null;}
+  drawMarkerLayer=L.layerGroup().addTo(map);
+  drawPunti.forEach(p=>{
+    L.circleMarker([p.lat,p.lon],{radius:6,color:'#fff',weight:2,fillColor:'#1A4F7A',fillOpacity:1}).addTo(drawMarkerLayer);
+  });
+  if(drawPreviewLayer){map.removeLayer(drawPreviewLayer);drawPreviewLayer=null;}
+  if(drawPunti.length>=2){
+    const coords=drawPunti.map(p=>[p.lat,p.lon]);
+    drawPreviewLayer=(drawMode==='polygon'&&drawPunti.length>=3)
+      ?L.polygon(coords,{color:'#1A4F7A',fillOpacity:.1,weight:3,dashArray:'4,4'}).addTo(map)
+      :L.polyline(coords,{color:'#1A4F7A',weight:4,dashArray:'4,4'}).addTo(map);
+  }
+  aggiornaToolbarDisegno();
+}
+
+function completaDisegno(){
+  if(drawMode==='punto'){ confermaPunto(); return; }
+  const minPunti=drawMode==='polygon'?3:2;
+  if(drawPunti.length<minPunti){alert(`Aggiungi almeno ${minPunti} punti.`);return;}
+  const geom=drawPunti;
+  // Pulisci preview
+  if(drawMarkerLayer){map.removeLayer(drawMarkerLayer);drawMarkerLayer=null;}
+  if(drawPreviewLayer){map.removeLayer(drawPreviewLayer);drawPreviewLayer=null;}
+  map.getContainer().style.cursor='';
+  const modo=drawMode;
+  drawMode=null; drawPunti=[];
+  aggiornaToolbarDisegno();
+  // Chiama il gestore appropriato
+  if(modo==='taglio'){
+    gestisciTaglio(geom); return;
+  }
+  gestisciDisegnoCompletato(geom, modo==='polygon');
+}
+
+function annullaDisegno(){
+  if(drawMarkerLayer){map.removeLayer(drawMarkerLayer);drawMarkerLayer=null;}
+  if(drawPreviewLayer){map.removeLayer(drawPreviewLayer);drawPreviewLayer=null;}
+  map.getContainer().style.cursor='';
+  drawMode=null; drawPunti=[];
+  aggiornaToolbarDisegno();
+}
+
+// NON usiamo click sulla mappa per disegnare (causa problemi mobile).
+// I punti si aggiungono SOLO con il bottone ＋ che usa il mirino centrale.
+
+function aggiornaToolbarDisegno(){
+  const tb=document.getElementById('draw-toolbar');
+  const tbDisegno=document.getElementById('draw-toolbar-active');
+  const tbTaglio=document.getElementById('draw-toolbar-taglio');
+  const ch=document.getElementById('crosshair');
+  const btnPiazza=document.getElementById('btn-punto-piazza');
+  const btnAggiungi=document.getElementById('btn-aggiungi-punto');
+  if(drawMode==='taglio'){
+    tb.style.display='none';
+    tbTaglio.style.display='flex';
+    tbDisegno.style.display='none';
+    document.getElementById('taglio-cnt').textContent=drawPunti.length;
+    ch.style.display='block';
+  } else if(drawMode==='punto'){
+    tb.style.display='none';
+    tbDisegno.style.display='flex';
+    tbTaglio.style.display='none';
+    document.getElementById('draw-cnt').textContent='';
+    document.getElementById('draw-tipo-label').textContent='📍 Punto';
+    tbDisegno.style.borderColor='#7B4FA6';
+    btnPiazza.style.display='inline-flex';
+    btnAggiungi.style.display='none';
+    ch.style.display='block';
+  } else if(drawMode){
+    tb.style.display='none';
+    tbDisegno.style.display='flex';
+    tbTaglio.style.display='none';
+    tbDisegno.style.borderColor='var(--bl)';
+    document.getElementById('draw-cnt').textContent=drawPunti.length;
+    document.getElementById('draw-tipo-label').textContent=drawMode==='polygon'?'Poligono':'Linea';
+    btnPiazza.style.display='none';
+    btnAggiungi.style.display='inline-flex';
+    ch.style.display='block';
+  } else {
+    tb.style.display='flex';
+    tbDisegno.style.display='none';
+    tbTaglio.style.display='none';
+    ch.style.display='none';
+  }
+}
+
+// Conferma posizionamento punto (mirino centrale)
+function confermaPunto(){
+  const center=map.getCenter();
+  const geom=[{lat:center.lat,lon:center.lng}];
+  if(drawMarkerLayer){map.removeLayer(drawMarkerLayer);drawMarkerLayer=null;}
+  if(drawPreviewLayer){map.removeLayer(drawPreviewLayer);drawPreviewLayer=null;}
+  map.getContainer().style.cursor='';
+  drawMode=null; drawPunti=[];
+  aggiornaToolbarDisegno();
+  gestisciDisegnoCompletato(geom, false, true);
+}
+
+async function gestisciDisegnoCompletato(geom, isArea, isPunto=false){
+  drawn.clearLayers();
+  selectedIsArea=isArea;
+  selectedIsPunto=isPunto;
+  if(isPunto){
+    selectedGeom=geom;
+    selectedMisura=0;
+    selectedPerimetro=0;
+    // Mostra marker preview viola
+    L.circleMarker([geom[0].lat,geom[0].lon],{radius:10,color:'#fff',weight:2,fillColor:'#B83025',fillOpacity:.7}).addTo(drawn); // rosso=da fare (bozza)
+  } else if(isArea){
+    const geomDensa=densificaA10m(geom, 25);
+    selectedGeom=geomDensa;
+    selectedMisura=calcolaArea(geomDensa);
+    selectedPerimetro=calcolaLunghezza(geomDensa);
+    L.polygon(geomDensa.map(p=>[p.lat,p.lon]),{color:'#1A4F7A',fillOpacity:.1,weight:3}).addTo(drawn);
+  } else {
+    const geomDensa=densificaA10m(geom, 25);
+    selectedGeom=geomDensa;
+    selectedMisura=calcolaLunghezza(geomDensa);
+    selectedPerimetro=0;
+    L.polyline(geomDensa.map(p=>[p.lat,p.lon]),{color:'#1A4F7A',weight:4,dashArray:'4,4'}).addTo(drawn);
+  }
+  showLoader(true); hideAreas();
+  try{
+    if(isPunto){
+      // Geocodifica inversa per suggerire il nome
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${geom[0].lat}&lon=${geom[0].lon}&format=json&accept-language=it`);
+      const d=await r.json();
+      showLoader(false);
+      const nome=d.address?.road||d.address?.pedestrian||d.address?.suburb||d.display_name?.split(',')[0]||'';
+      mostraForm(nome);
+    } else {
+      const lats=geom.map(p=>p.lat), lons=geom.map(p=>p.lon);
+      const clat=(Math.min(...lats)+Math.max(...lats))/2;
+      const clon=(Math.min(...lons)+Math.max(...lons))/2;
+      const matches=await cercaNome(clat,clon);
+      showLoader(false);
+      matches.length?mostraMatch(matches):mostraFormDiretto();
+    }
+  }catch(err){showLoader(false);mostraFormDiretto();}
+}
+
+function avviaTaglioDaBottone(){
+  // Nascondi il banner parziale temporaneamente per lasciare spazio alla mappa
+  document.getElementById('partial-banner').style.display='none';
+  avviaDisegno('taglio');
+}
+
+function gestisciTaglio(geom){
+  drawnTaglio.clearLayers();
+  pTaglioGeom=geom;
+  L.polyline(geom.map(p=>[p.lat,p.lon]),{color:'#1A4F7A',weight:3,dashArray:'5,4'}).addTo(drawnTaglio);
+  aggiornaPreviewArea();
+  aggiornaConferma();
+  // Mostra di nuovo il banner con lo stato aggiornato
+  document.getElementById('partial-banner').style.display='block';
+  // Aggiorna UI step 1 → completato
+  document.getElementById('btn-avvia-taglio').style.display='none';
+  const stato=document.getElementById('pb-taglio-stato');
+  stato.style.display='flex';
+  document.getElementById('lbl-t1').textContent=`Linea disegnata (${geom.length} punti)`;
+  // Mostra step 2
+  document.getElementById('zona-scelta').style.display='block';
+}
+
+// (evento CREATED rimosso: ora usiamo sistema touch-friendly custom)
+
+// ── DENSIFICAZIONE A 10m ──────────────────────────────────────────────────────
+// Inserisce punti intermedi finché nessun segmento supera maxDist metri
+function densificaA10m(geom, maxDist){
+  if(!geom||geom.length<2) return geom;
+  const risultato=[geom[0]];
+  for(let i=0;i<geom.length-1;i++){
+    const a=geom[i], b=geom[i+1];
+    const dist=haversine(a,b);
+    if(dist>maxDist){
+      const n=Math.ceil(dist/maxDist); // quanti segmenti fare
+      for(let k=1;k<n;k++){
+        const t=k/n;
+        risultato.push({
+          lat:a.lat+(b.lat-a.lat)*t,
+          lon:a.lon+(b.lon-a.lon)*t
+        });
+      }
+    }
+    risultato.push(b);
+  }
+  return risultato;
+}
+
+// ── MISURE ────────────────────────────────────────────────────────────────────
+function haversine(a,b){
+  const R=6371000;
+  const dLat=(b.lat-a.lat)*Math.PI/180;
+  const dLon=(b.lon-a.lon)*Math.PI/180;
+  const s=Math.sin(dLat/2)*Math.sin(dLat/2)+
+    Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*
+    Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+}
+function calcolaLunghezza(geom){
+  let t=0;
+  for(let i=0;i<geom.length-1;i++) t+=haversine(geom[i],geom[i+1]);
+  return Math.round(t);
+}
+function calcolaArea(geom){
+  // Shoelace formula in gradi, conversione approssimativa
+  let a=0;
+  const n=geom.length;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    a+=geom[i].lon*geom[j].lat;
+    a-=geom[j].lon*geom[i].lat;
+  }
+  const aGradi=Math.abs(a)/2;
+  // 1 grado lat ≈ 111320m, 1 grado lon ≈ 111320*cos(lat)m
+  const latMid=geom.reduce((s,p)=>s+p.lat,0)/n;
+  const mq=aGradi*(111320*111320*Math.cos(latMid*Math.PI/180));
+  return Math.round(mq);
+}
+function formatMisura(lav){
+  if(!lav.misura) return '';
+  if(lav.isArea){
+    const mq=`📐 ${lav.misura.toLocaleString('it')} m²`;
+    const per=lav.perimetro?` · 🔲 ${lav.perimetro.toLocaleString('it')} m perimetro`:'';
+    return mq+per;
+  }
+  return `📏 ${lav.misura.toLocaleString('it')} m`;
+}
+
+// ── NOMINATIM ─────────────────────────────────────────────────────────────────
+async function cercaNome(lat,lng){
+  const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=17&accept-language=it`).then(r=>r.json());
+  const res=[];
+  const a=r.address||{};
+  if(a.road) res.push({nome:a.road,tipo:'Strada'});
+  if(a.suburb&&a.suburb!==a.road) res.push({nome:a.suburb,tipo:'Quartiere'});
+  if(a.leisure||a.park) res.push({nome:a.leisure||a.park,tipo:'Area verde'});
+  const comune=a.village||a.town||a.city;
+  if(comune&&comune!==a.road) res.push({nome:comune,tipo:'Comune'});
+  return res.filter(x=>x.nome).slice(0,4);
+}
+
+function mostraMatch(matches){
+  matchElements=matches;
+  document.getElementById('hint-main').style.display='none';
+  document.getElementById('match-list').innerHTML=
+    matches.map((el,i)=>`
+      <div class="match-item" id="mi-${i}" onclick="selMatch(${i})">
+        <div style="flex:1"><div class="mi-n">${el.nome}</div><div class="mi-t">${el.tipo}</div></div>
+        <div style="font-size:18px;color:var(--mut)">›</div>
+      </div>`).join('')+
+    `<div class="match-item" onclick="mostraFormDiretto()">
+      <div class="mi-n" style="flex:1">✏️ Inserisci nome manualmente</div>
+    </div>`;
+  document.getElementById('area-match').style.display='block';
+}
+function selMatch(i){
+  document.getElementById('area-match').style.display='none';
+  mostraForm(matchElements[i].nome);
+}
+function mostraFormDiretto(){
+  document.getElementById('hint-main').style.display='none';
+  mostraForm('');
+}
+function mostraForm(nome){
+  const misuraStr=selectedMisura
+    ?(selectedIsArea
+      ?`📐 ${selectedMisura.toLocaleString('it')} m²${selectedPerimetro?' · 🔲 '+selectedPerimetro.toLocaleString('it')+' m perimetro':''}`
+      :`📏 ${selectedMisura.toLocaleString('it')} m`)
+    :'';
+  const hintTitolo=selectedIsPunto?'📍 Punto segnalato':nome?`📍 ${nome}`:'📍 Zona disegnata';
+  document.getElementById('hint-sel').innerHTML=`<b>${hintTitolo}</b>${nome&&!selectedIsPunto?'':' Inserisci il nome.'} ${misuraStr}`;
+  document.getElementById('f-nome').value=nome;
+  document.getElementById('f-data').value=fmtData(new Date());
+  document.getElementById('f-tipo').value=selectedIsPunto?'Raccolta rifiuti':selectedIsArea?'Pulizia parco / area verde':'Spazzamento stradale';
+  document.getElementById('ops-grid').innerHTML=OPERATORI.map(op=>`
+    <label class="op" id="op-${op.id}" onclick="toggleOp('${op.id}')">
+      <input type="checkbox" value="${op.id}"> ${op.nome}
+    </label>`).join('');
+  document.getElementById('f-note').value='';
+  document.getElementById('area-form').style.display='block';
+}
+function toggleOp(id){
+  const el=document.getElementById('op-'+id);
+  const cb=el.querySelector('input');
+  cb.checked=!cb.checked; el.classList.toggle('on',cb.checked);
+}
+
+// ── SALVA LAVORO ──────────────────────────────────────────────────────────────
+function salvaLavoro(){
+  const nome=document.getElementById('f-nome').value.trim();
+  const data=document.getElementById('f-data').value;
+  if(!nome||!data){alert('Inserisci nome e data.');return;}
+  const ops=[...document.querySelectorAll('.op input:checked')]
+    .map(cb=>OPERATORI.find(o=>o.id===cb.value)?.nome).filter(Boolean);
+  const lav={
+    id:'lav_'+Date.now(),nome,data,
+    nomeEsteso:'',
+    tipo:document.getElementById('f-tipo').value,
+    note:document.getElementById('f-note').value.trim(),
+    operatori:ops,stato:'red',notaMancante:'',
+    geom:selectedGeom,isArea:selectedIsArea,isPunto:selectedIsPunto,
+    misura:selectedMisura,
+    perimetro:selectedPerimetro,
+    foto:[]
+  };
+  lavori.push(lav);
+  _upsertLavoro(lav);  // salva solo il nuovo lavoro su Supabase
+  drawn.clearLayers();
+  disegnaLavoro(lav);
+  renderTutti();
+  resetDisegno();
+  switchTab('da-fare');
+}
+
+// ── OVERLAY ───────────────────────────────────────────────────────────────────
+function col(s){return s==='green'?'#1E6B3C':s==='orange'?'#E67E22':'#B83025';}
+function disegnaLavoro(lav){
+  rimuoviLayer(lav.id);
+  if(!lav.geom?.length) return;
+  const c=col(lav.stato);
+  const tooltip=`<b>${lav.nomeEsteso||lav.nome}</b><br>${lav.tipo}<br>📅 ${lav.data||''}`;
+  let l;
+  if(lav.isPunto){
+    // Marker puntuale — cerchio colorato per stato (stesso colore di linee e aree)
+    l=L.circleMarker([lav.geom[0].lat,lav.geom[0].lon??lav.geom[0].lng],{
+      radius:11, color:'#fff', weight:2.5, fillColor:c, fillOpacity:.92
+    });
+    l.bindTooltip(`📍 <b>${lav.nomeEsteso||lav.nome}</b><br>${lav.tipo}<br>📅 ${lav.data||''}`,{sticky:true});
+  } else {
+    const coords=lav.geom.map(p=>[p.lat,p.lon??p.lng]);
+    const W=lav.isArea?3:6;
+    l=lav.isArea
+      ?L.polygon(coords,{color:c,fillColor:c,fillOpacity:.22,weight:W})
+      :L.polyline(coords,{color:c,weight:W,opacity:.9});
+    l.bindTooltip(`<b>${lav.nomeEsteso||lav.nome}</b><br>${lav.tipo}<br>📅 ${lav.data||''}<br>${formatMisura(lav)}`,{sticky:true});
+  }
+  l.on('click',function(e){
+    L.DomEvent.stopPropagation(e);
+    evidenziaCard(lav.id);
+  });
+  l.addTo(map);
+  overlayLayers[lav.id]={base:l};
+}
+function rimuoviLayer(id){
+  const ls=overlayLayers[id]; if(!ls) return;
+  Object.values(ls).forEach(x=>{try{map.removeLayer(x);}catch(e){}});
+  delete overlayLayers[id];
+}
+
+// ── MODIFICA GEOMETRIA CON DRAG DIRETTO ──────────────────────────────────────
+// Funziona su desktop (mouse) e mobile (touch) senza click multipli.
+// - Punti arancioni grandi = vertici reali → trascina per spostare
+// - Punti bianchi piccoli = baricentri → trascina per aggiungere un nuovo vertice
+// - Doppio tap/click su vertice → lo elimina
+
+let editLavId=null;
+let editPunti=[];
+let editLayer; // init in selezionaRuolo
+let editPreview=null;
+let editDomMarkers=[];   // {el, idx, isMid} — riferimenti ai div HTML
+
+function avviaModifica(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav||!lav.geom?.length) return;
+  if(editLavId) terminaModifica(false);
+  editLavId=id;
+  editPunti=lav.geom.map(p=>({lat:p.lat,lon:p.lon??p.lng}));
+  rimuoviLayer(id);
+  const ls=overlayLayers[id];
+  const base=ls?Object.values(ls)[0]:null;
+  if(base?.getBounds) map.fitBounds(base.getBounds(),{padding:[60,60]});
+  document.getElementById('edit-toolbar').style.display='flex';
+  document.getElementById('edit-toolbar-nome').textContent=lav.nomeEsteso||lav.nome;
+  document.getElementById('edit-info').textContent='Trascina i punti per modificarli. Trascina i ◦ bianchi per aggiungerne nuovi. Doppio tap per eliminare.';
+  document.getElementById('btn-edit-sposta').style.display='none';
+  document.getElementById('btn-edit-del').style.display='none';
+  map.dragging.disable();  // disabilita pan durante modifica
+  aggiornaEditLayer();
+  switchTab('prog');
+}
+
+function aggiornaEditLayer(){
+  // Rimuovi markers DOM precedenti
+  editDomMarkers.forEach(d=>d.el.remove());
+  editDomMarkers=[];
+  editLayer.clearLayers();
+  if(editPreview){map.removeLayer(editPreview);editPreview=null;}
+
+  const lav=lavori.find(l=>l.id===editLavId);
+  if(!lav) return;
+  const isArea=lav.isArea;
+
+  // Preview geometria
+  const coords=editPunti.map(p=>[p.lat,p.lon]);
+  editPreview=isArea
+    ?L.polygon(coords,{color:'#E67E22',fillColor:'#E67E22',fillOpacity:.12,weight:3}).addTo(editLayer)
+    :L.polyline(coords,{color:'#E67E22',weight:5}).addTo(editLayer);
+
+  const container=map.getContainer();
+
+  // Crea marker come div HTML posizionati in pixel
+  function creaMarker(lat,lon,isMid,idx){
+    const el=document.createElement('div');
+    el.style.cssText=`position:absolute;z-index:1200;transform:translate(-50%,-50%);
+      width:${isMid?16:22}px;height:${isMid?16:22}px;border-radius:50%;
+      background:${isMid?'#fff':'#E67E22'};
+      border:${isMid?'2px solid #E67E22':'3px solid #fff'};
+      box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:grab;touch-action:none;`;
+    if(!isMid){
+      const lbl=document.createElement('span');
+      lbl.style.cssText='position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#E67E22;white-space:nowrap;pointer-events:none';
+      lbl.textContent=idx+1;
+      el.appendChild(lbl);
+    }
+    container.appendChild(el);
+    posizionaMarker(el,lat,lon);
+
+    let dragging=false, startPx=null, startLL=null;
+
+    function onStart(ex,ey){
+      dragging=false; startPx={x:ex,y:ey};
+      const pt=map.containerPointToLatLng([ex,ey]);
+      startLL={lat:pt.lat,lon:pt.lng};
+      map.dragging.disable();
+    }
+    function onMove(ex,ey){
+      dragging=true;
+      const pt=map.containerPointToLatLng([ex,ey]);
+      el.style.left=ex+'px'; el.style.top=ey+'px';
+      if(isMid){
+        // Mentre trascina il punto medio, lo converte in punto reale e aggiorna preview
+        const newP={lat:pt.lat,lon:pt.lng};
+        const arr=[...editPunti];
+        arr.splice(idx+1,0,newP);
+        const cs=arr.map(p=>[p.lat,p.lon]);
+        if(editPreview) editPreview.setLatLngs(isArea?cs:[cs]);
+      } else {
+        editPunti[idx]={lat:pt.lat,lon:pt.lng};
+        const cs=editPunti.map(p=>[p.lat,p.lon]);
+        if(editPreview) editPreview.setLatLngs(isArea?cs:[cs]);
+      }
+    }
+    function onEnd(ex,ey){
+      map.dragging.enable();
+      if(dragging){
+        const pt=map.containerPointToLatLng([ex,ey]);
+        if(isMid){
+          editPunti.splice(idx+1,0,{lat:pt.lat,lon:pt.lng});
+        } else {
+          editPunti[idx]={lat:pt.lat,lon:pt.lng};
+        }
+        aggiornaEditLayer();
+      } else {
+        // Tap senza drag: doppio tap elimina il vertice
+        if(!isMid){
+          if(el.dataset.lastTap&&Date.now()-el.dataset.lastTap<400){
+            const min=isArea?3:2;
+            if(editPunti.length>min){
+              editPunti.splice(idx,1);
+              aggiornaEditLayer();
+              return;
+            }
+          }
+          el.dataset.lastTap=Date.now();
+        }
+      }
+    }
+
+    // Mouse
+    el.addEventListener('mousedown',e=>{e.stopPropagation();onStart(e.offsetX+el.offsetLeft,e.offsetY+el.offsetTop);
+      function mm(e){onMove(e.clientX-container.getBoundingClientRect().left,e.clientY-container.getBoundingClientRect().top);}
+      function mu(e){document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);
+        onEnd(e.clientX-container.getBoundingClientRect().left,e.clientY-container.getBoundingClientRect().top);}
+      document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);
+    });
+    // Touch
+    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();
+      const t=e.touches[0];
+      const r=container.getBoundingClientRect();
+      onStart(t.clientX-r.left,t.clientY-r.top);
+      function tm(e){e.preventDefault();const t=e.touches[0];const r=container.getBoundingClientRect();
+        onMove(t.clientX-r.left,t.clientY-r.top);}
+      function te(e){e.preventDefault();const t=e.changedTouches[0];const r=container.getBoundingClientRect();
+        container.removeEventListener('touchmove',tm);container.removeEventListener('touchend',te);
+        onEnd(t.clientX-r.left,t.clientY-r.top);}
+      container.addEventListener('touchmove',tm,{passive:false});
+      container.addEventListener('touchend',te,{passive:false});
+    },{passive:false});
+
+    editDomMarkers.push({el,lat,lon,isMid,idx});
+  }
+
+  // Vertici reali
+  editPunti.forEach((p,i)=>creaMarker(p.lat,p.lon,false,i));
+  // Baricentri (punti medi)
+  const n=editPunti.length;
+  for(let i=0;i<n-(isArea?0:1);i++){
+    const a=editPunti[i], b=editPunti[(i+1)%n];
+    creaMarker((a.lat+b.lat)/2,(a.lon+b.lon)/2,true,i);
+  }
+
+  // Aggiorna posizioni marker quando la mappa si muove/zooma
+  map.off('move',aggiornaPosizioniMarker);
+  map.on('move',aggiornaPosizioniMarker);
+}
+
+function posizionaMarker(el,lat,lon){
+  const pt=map.latLngToContainerPoint([lat,lon]);
+  el.style.left=pt.x+'px'; el.style.top=pt.y+'px';
+}
+function aggiornaPosizioniMarker(){
+  editDomMarkers.forEach(d=>{
+    // Ricalcola la posizione corrente del punto
+    const p=d.isMid
+      ?(()=>{const a=editPunti[d.idx],b=editPunti[(d.idx+1)%editPunti.length];return{lat:(a.lat+b.lat)/2,lon:(a.lon+b.lon)/2};})()
+      :editPunti[d.idx];
+    if(p) posizionaMarker(d.el,p.lat,p.lon);
+  });
+}
+
+function terminaModifica(salva){
+  map.off('move',aggiornaPosizioniMarker);
+  map.dragging.enable();
+  editDomMarkers.forEach(d=>d.el.remove());
+  editDomMarkers=[];
+  editLayer.clearLayers();
+  if(editPreview){map.removeLayer(editPreview);editPreview=null;}
+  const lav=lavori.find(l=>l.id===editLavId);
+  if(salva&&lav){
+    lav.geom=densificaA10m(editPunti,25);
+    lav.misura=lav.isArea?calcolaArea(lav.geom):calcolaLunghezza(lav.geom);
+    lav.perimetro=lav.isArea?calcolaLunghezza(lav.geom):0;
+    _upsertLavoro(lav);
+  }
+  if(lav) disegnaLavoro(lav);
+  const wasModalEdit=editLavModalId&&editLavGeomChanged;
+  editLavId=null; editPunti=[];
+  document.getElementById('edit-toolbar').style.display='none';
+  if(salva) renderTutti();
+  // Se la modifica era avviata dal modal, riapri il modal (solo se btn-torna-modal non l'ha già fatto)
+  if(salva && wasModalEdit){
+    editLavGeomChanged=false;
+    const btn=document.getElementById('btn-torna-modal'); if(btn) btn.remove();
+    setTimeout(()=>riaprìEditLav(),80);
+  }
+}
+function renderAllOverlays(){
+  Object.keys(overlayLayers).forEach(rimuoviLayer);
+  lavori.forEach(disegnaLavoro);
+  aggiornaMappaGlobale();
+}
+
+// ── RENDER LISTE ──────────────────────────────────────────────────────────────
+function cardHTML(lav){
+  const bc=lav.stato==='green'?'bgr':lav.stato==='orange'?'bor':'brd2';
+  const bl=lav.stato==='green'?'Completato':lav.stato==='orange'?'Parziale':'Da fare';
+  const fotoHtml=lav.foto?.length
+    ?`<div class="card-fotos">${lav.foto.map(f=>`<img src="${f}" onclick="openLightbox('${f}')">`).join('')}</div>`:'' ;
+  const tipoIcon=lav.isPunto?'📍':lav.isArea?'🟦':'〰️';
+  return `<div class="lcard" id="card-${lav.id}" onclick="zoomLav('${lav.id}')" style="cursor:pointer">
+    <div class="lh"><div class="lname">${tipoIcon} ${lav.nomeEsteso||lav.nome}</div><span class="badge ${bc}">${bl}</span></div>
+    <div class="lmeta">📅 ${lav.data} · ${lav.tipo}<br>👷 ${lav.operatori?.join(', ')||'—'}</div>
+    ${(!lav.isPunto&&lav.misura)?`<div class="lmisura">${formatMisura(lav)}</div>`:''}
+    ${lav.note?`<div style="font-size:11px;color:var(--mut);margin-bottom:3px">📝 ${lav.note}</div>`:''}
+    ${lav.notaMancante?`<div class="lnota">⚠️ ${lav.notaMancante}</div>`:''}
+    ${fotoHtml}
+    <div class="lacts" onclick="event.stopPropagation()">
+      ${lav.stato==='red'
+        ?`<button class="lb" style="background:#FFF8E6;border-color:#F5C842;color:#7A5800" onclick="apriEditLav('${lav.id}')">✏️ Modifica</button>`
+        :''}
+      ${!lav.isPunto&&lav.stato!=='red'?`<button class="lb" style="background:var(--bll);border-color:#9FC6E8;color:var(--bl)" onclick="avviaModifica('${lav.id}')">✏️ Geometria</button>`:''}
+      ${lav.stato==='red'
+        ?`<button class="lb lbg" onclick="apriModal('${lav.id}')">Chiudi lavoro</button>`
+        :lav.daRiprogrammare
+          ?`<button class="lb lbo" style="background:#FFF3E0;border-color:#F5B07A" onclick="apriRiprog('${lav.id}')">🔄 Riprogramma</button>`
+          :`<button class="lb lbo" onclick="apriModal('${lav.id}')">Stato</button>`}
+      <button class="lb lbr" onclick="elimina('${lav.id}')">✕</button>
+    </div>
+  </div>`;
+}
+
+// ── SISTEMA FILTRI ─────────────────────────────────────────────────────────────
+const TIPI_INTERVENTO=['Raccolta rifiuti','Spazzamento stradale','Pulizia parco / area verde','Diserbo marciapiedi','Svuotamento cestini','Pulizia piazza','Altro'];
+const filtriStato={
+  'da-fare':{periodo:'tutti',rangeDA:'',rangeA:'',tipi:new Set(TIPI_INTERVENTO)},
+  'parziali':{periodo:'tutti',rangeDA:'',rangeA:'',tipi:new Set(TIPI_INTERVENTO)},
+  'completati':{periodo:'tutti',rangeDA:'',rangeA:'',tipi:new Set(TIPI_INTERVENTO)}
+};
+
+function iniziaFiltri(){
+  ['da-fare','parziali','completati'].forEach(tab=>{
+    const c=document.getElementById('tipi-'+tab);
+    if(!c) return;
+    c.innerHTML=TIPI_INTERVENTO.map(t=>{
+      const enc=encodeURIComponent(t);
+      return `<button class="tf on" data-tab="${tab}" data-tipo="${t}" onclick="toggleTipoFiltro('${tab}','${enc}')"><input type="checkbox" checked> ${t}</button>`;
+    }).join('');
+  });
+}
+
+function toggleTipoFiltro(tab, tipoEnc){
+  const tipo=decodeURIComponent(tipoEnc);
+  const f=filtriStato[tab];
+  if(f.tipi.has(tipo)) f.tipi.delete(tipo);
+  else f.tipi.add(tipo);
+  const btn=document.querySelector(`.tf[data-tab="${tab}"][data-tipo="${tipo}"]`);
+  if(btn){ btn.classList.toggle('on',f.tipi.has(tipo)); btn.querySelector('input').checked=f.tipi.has(tipo); }
+  renderFiltrato(tab);
+  aggiornaMappaFiltrata(tab);
+}
+
+function setFiltroP(tab,periodo){
+  filtriStato[tab].periodo=periodo;
+  document.querySelectorAll(`.fp[data-tab="${tab}"]`).forEach(b=>b.classList.toggle('on',b.dataset.p===periodo));
+  const range=document.getElementById('frange-'+tab);
+  if(range) range.classList.toggle('show',periodo==='range');
+  if(periodo!=='range'){ renderFiltrato(tab); aggiornaMappaFiltrata(tab); }
+}
+
+function applicaRange(tab){
+  filtriStato[tab].rangeDA=document.getElementById('frange-'+tab+'-da').value;
+  filtriStato[tab].rangeA=document.getElementById('frange-'+tab+'-a').value;
+  renderFiltrato(tab); aggiornaMappaFiltrata(tab);
+}
+
+function fmtData(d){
+  // Formatta in YYYY-MM-DD usando la data LOCALE (non UTC) per evitare bug timezone
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const g=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+g;
+}
+
+function getDateRange(periodo,tab){
+  const oggi=new Date(); oggi.setHours(0,0,0,0);
+  if(periodo==='tutti') return null;
+  if(periodo==='oggi') return {da:fmtData(oggi),a:fmtData(oggi)};
+  if(periodo==='settimana'){
+    // Lunedì della settimana corrente (lun=0 ... dom=6 con getDay(): dom=0,lun=1,...sab=6)
+    const lun=new Date(oggi); lun.setDate(oggi.getDate()-((oggi.getDay()+6)%7));
+    const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+    return {da:fmtData(lun),a:fmtData(dom)};
+  }
+  if(periodo==='prossima'){
+    const lun=new Date(oggi); lun.setDate(oggi.getDate()-((oggi.getDay()+6)%7)+7);
+    const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+    return {da:fmtData(lun),a:fmtData(dom)};
+  }
+  if(periodo==='7gg'){
+    const sette=new Date(oggi); sette.setDate(oggi.getDate()-6);
+    return {da:fmtData(sette),a:fmtData(oggi)};
+  }
+  if(periodo==='mese'){
+    const inizio=new Date(oggi.getFullYear(),oggi.getMonth(),1);
+    const fine=new Date(oggi.getFullYear(),oggi.getMonth()+1,0);
+    return {da:fmtData(inizio),a:fmtData(fine)};
+  }
+  if(periodo==='range'){
+    const f=filtriStato[tab];
+    if(!f.rangeDA&&!f.rangeA) return null;
+    return {da:f.rangeDA||'0000-01-01',a:f.rangeA||'9999-12-31'};
+  }
+  return null;
+}
+
+function applicaFiltro(lista,tab){
+  const f=filtriStato[tab];
+  const range=getDateRange(f.periodo,tab);
+  return lista.filter(lav=>{
+    if(!f.tipi.has(lav.tipo)) return false;
+    if(range){ const d=lav.data||''; if(d<range.da||d>range.a) return false; }
+    return true;
+  });
+}
+
+function renderFiltrato(tab){
+  const stato=tab==='da-fare'?'red':tab==='parziali'?'orange':'green';
+  const tutti=lavori.filter(l=>l.stato===stato);
+  const filtrati=applicaFiltro(tutti.slice().reverse(),tab);
+  const empty='<div class="empty">Nessun intervento nel periodo selezionato.</div>';
+  document.getElementById('list-'+tab).innerHTML=filtrati.length?filtrati.map(cardHTML).join(''):empty;
+  const cnt=document.getElementById('fcnt-'+tab);
+  if(cnt) cnt.textContent=filtrati.length!==tutti.length?(filtrati.length+' di '+tutti.length):'';
+}
+
+// ── VISIBILITÀ LEGENDA ────────────────────────────────────────────────────────
+const mappaVisibilita={red:true,orange:true,green:true};
+
+function toggleLegenda(stato){
+  mappaVisibilita[stato]=!mappaVisibilita[stato];
+  // Aggiorna UI legenda
+  const li=document.getElementById('leg-'+stato);
+  const chk=document.getElementById('leg-chk-'+stato);
+  if(li) li.classList.toggle('off',!mappaVisibilita[stato]);
+  if(chk) chk.checked=mappaVisibilita[stato];
+  aggiornaMappaGlobale();
+}
+
+// Funzione master: applica visibilità legenda + filtri temporali del tab attivo
+function aggiornaMappaGlobale(){
+  // Costruisci set di id visibili per ogni stato, tenendo conto dei filtri temporali
+  const tabAttivo=document.querySelector('.ptab.on')?.dataset.tab;
+
+  // Per ogni stato, calcola quali id passano i filtri
+  const idFiltrati={};
+  ['red','orange','green'].forEach(stato=>{
+    const tab=stato==='red'?'da-fare':stato==='orange'?'parziali':'completati';
+    const tutti=lavori.filter(l=>l.stato===stato);
+    // Applica filtro temporale solo se il tab corrispondente è attivo
+    // Altrimenti mostra tutto (nessun filtro temporale applicato alla mappa quando il tab non è selezionato)
+    const filtrati= (tabAttivo===tab)
+      ? applicaFiltro(tutti, tab)
+      : tutti;
+    idFiltrati[stato]=new Set(filtrati.map(l=>l.id));
+  });
+
+  // Aggiorna visibilità di tutti gli overlay
+  lavori.forEach(lav=>{
+    const ls=overlayLayers[lav.id]; if(!ls) return;
+    const visibile=mappaVisibilita[lav.stato];
+    const passaFiltro=idFiltrati[lav.stato]?.has(lav.id)??true;
+
+    Object.values(ls).forEach(layer=>{
+      if(!visibile){
+        // Tipo nascosto dalla legenda: rimuovi completamente
+        if(map.hasLayer(layer)) map.removeLayer(layer);
+      } else if(!passaFiltro){
+        // Tipo visibile ma escluso dal filtro temporale: sbiadisci
+        if(!map.hasLayer(layer)) map.addLayer(layer);
+        if(layer.setStyle) layer.setStyle({opacity:0.1,fillOpacity:0.03,color:col(lav.stato)});
+      } else {
+        // Visibile e nel filtro: piena visibilità
+        if(!map.hasLayer(layer)) map.addLayer(layer);
+        if(layer.setStyle) layer.setStyle({
+          opacity:0.9,
+          fillOpacity:lav.isArea?0.22:undefined,
+          color:col(lav.stato)
+        });
+      }
+    });
+  });
+}
+
+function aggiornaMappaFiltrata(tab){
+  // Ora è solo un alias che chiama aggiornaMappaGlobale
+  aggiornaMappaGlobale();
+}
+
+function renderTutti(){
+  const daFare=lavori.filter(l=>l.stato==='red');
+  const parziali=lavori.filter(l=>l.stato==='orange');
+  const completati=lavori.filter(l=>l.stato==='green');
+  document.getElementById('cnt-df').textContent=daFare.length;
+  document.getElementById('cnt-pa').textContent=parziali.length;
+  document.getElementById('cnt-co').textContent=completati.length;
+  renderFiltrato('da-fare');
+  renderFiltrato('parziali');
+  renderFiltrato('completati');
+}
+
+// ── EVIDENZIA CARD DA CLICK MAPPA ────────────────────────────────────────────
+function evidenziaCard(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  // Attiva il tab corretto
+  const tab=lav.stato==='green'?'completati':lav.stato==='orange'?'parziali':'da-fare';
+  switchTab(tab);
+  // Rimuovi eventuale evidenza precedente
+  document.querySelectorAll('.lcard.map-sel').forEach(c=>c.classList.remove('map-sel'));
+  // Aspetta il prossimo frame (tab appena mostrato)
+  requestAnimationFrame(()=>{
+    const card=document.getElementById('card-'+id);
+    if(!card) return;
+    card.classList.add('map-sel');
+    card.scrollIntoView({behavior:'smooth',block:'nearest'});
+    setTimeout(()=>card.classList.remove('map-sel'),2000);
+  });
+}
+
+
+function zoomLav(id){
+  const ls=overlayLayers[id];
+  if(!ls) return;
+  const layer=Object.values(ls)[0];
+  if(!layer) return;
+  const lav=lavori.find(l=>l.id===id);
+  if(!lav?.geom?.length) return;
+  if(lav.isPunto){
+    map.setView([lav.geom[0].lat,lav.geom[0].lon??lav.geom[0].lng],17,{animate:true});
+  } else if(layer.getBounds){
+    map.fitBounds(layer.getBounds(),{padding:[60,60]});
+  }
+  // Evidenzia lampeggiando
+  if(highlightLayer){map.removeLayer(highlightLayer);highlightLayer=null;}
+  const coords=lav.geom.map(p=>[p.lat,p.lon??p.lng]);
+  if(lav.isPunto){
+    highlightLayer=L.circleMarker(coords[0],{radius:18,color:'#FFD700',weight:4,fillColor:'#FFD700',fillOpacity:.3});
+  } else {
+    highlightLayer=lav.isArea
+      ?L.polygon(coords,{color:'#FFD700',weight:5,fillColor:'#FFD700',fillOpacity:.3})
+      :L.polyline(coords,{color:'#FFD700',weight:10,opacity:.7});
+  }
+  highlightLayer.addTo(map);
+  let n=0;
+  const blink=setInterval(()=>{
+    n++;
+    if(n%2===0) highlightLayer?.setStyle({opacity:0,fillOpacity:0});
+    else highlightLayer?.setStyle({opacity:.7,fillOpacity:.3});
+    if(n>=6){clearInterval(blink);if(highlightLayer){map.removeLayer(highlightLayer);highlightLayer=null;}}
+  },400);
+}
+// ── MENU CONTESTUALE MAPPA ───────────────────────────────────────────────────
+let menuOpen=false;
+function chiudiMenu(){
+  document.getElementById('map-menu').style.display='none';
+  menuOpen=false;
+}
+document.addEventListener('click',()=>{if(menuOpen)chiudiMenu();});
+
+function apriMenuMappa(id, px, py){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  menuOpen=true;
+  const menu=document.getElementById('map-menu');
+  document.getElementById('map-menu-title').textContent=lav.nomeEsteso||lav.nome;
+  const bc=lav.stato==='green'?'#1E6B3C':lav.stato==='orange'?'#C94E00':'#B83025';
+  const bs=lav.stato==='green'?'Completato':lav.stato==='orange'?'Parziale':'Da fare';
+  const items=[
+    lav.stato==='red'
+      ?{ico:'✏️', label:'Modifica intervento', fn:`apriEditLav('${id}');chiudiMenu()`}
+      :{ico:'✏️', label:'Modifica geometria', fn:`avviaModifica('${id}');chiudiMenu()`},
+    lav.stato==='red'
+      ?{ico:'✅', label:'Chiudi lavoro', fn:`apriModal('${id}');chiudiMenu()`}
+      :lav.daRiprogrammare
+        ?{ico:'🔄', label:'Riprogramma', fn:`apriRiprog('${id}');chiudiMenu()`}
+        :{ico:'📋', label:'Modifica stato', fn:`apriModal('${id}');chiudiMenu()`},
+    {ico:'🗑', label:'Elimina', fn:`elimina('${id}');chiudiMenu()`, red:true},
+  ];
+  document.getElementById('map-menu-items').innerHTML=items.map(it=>
+    `<div onclick="${it.fn};event.stopPropagation()" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;color:${it.red?'var(--rd)':'var(--txt)'};border-bottom:0.5px solid var(--brd)"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span>${it.ico}</span><span>${it.label}</span>
+    </div>`).join('');
+  // Posiziona vicino al click, evita uscita schermo
+  menu.style.display='block';
+  const mw=200, mh=140;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  let x=px+10, y=py-20;
+  if(x+mw>vw) x=px-mw-10;
+  if(y+mh>vh) y=py-mh;
+  menu.style.left=x+'px'; menu.style.top=y+'px';
+}
+
+function elimina(id){
+  if(!confirm('Eliminare?')) return;
+  rimuoviLayer(id);
+  lavori=lavori.filter(x=>x.id!==id);
+  _deleteLavoro(id);   // cancella da Supabase (asincrono)
+  renderTutti();
+}
+
+// ── MODAL CONSUNTIVO ──────────────────────────────────────────────────────────
+function apriModal(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  modalId=id; modalFotos=[];
+  document.getElementById('msub').textContent=(lav.nomeEsteso||lav.nome)+' · '+lav.data;
+  document.getElementById('mstato').value=lav.stato==='green'?'green':'orange';
+  document.getElementById('mnota').value=lav.notaMancante||'';
+  renderFotoGrid();
+  toggleModalParziale();
+  document.getElementById('modal').classList.add('on');
+}
+function closeModal(){document.getElementById('modal').classList.remove('on');modalFotos=[];}
+function toggleModalParziale(){
+  document.getElementById('modal-parziale').style.display=
+    document.getElementById('mstato').value==='orange'?'block':'none';
+}
+function aggFoto(e){
+  [...e.target.files].forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>compressImg(ev.target.result,800,b64=>{modalFotos.push(b64);renderFotoGrid();});
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+}
+function compressImg(src,maxSize,cb){
+  const img=new Image();
+  img.onload=()=>{
+    const cv=document.createElement('canvas');
+    let w=img.width,h=img.height;
+    if(w>h&&w>maxSize){h=Math.round(h*maxSize/w);w=maxSize;}
+    else if(h>maxSize){w=Math.round(w*maxSize/h);h=maxSize;}
+    cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    cb(cv.toDataURL('image/jpeg',0.82));
+  };
+  img.src=src;
+}
+function renderFotoGrid(){
+  const lav=lavori.find(l=>l.id===modalId);
+  const es=(lav?.foto||[]).map((f,i)=>`
+    <div class="foto-thumb"><img src="${f}" onclick="openLightbox('${f}')">
+    <button class="df" onclick="delFotoEs('${modalId}',${i})">✕</button></div>`).join('');
+  const nv=modalFotos.map((f,i)=>`
+    <div class="foto-thumb" style="outline:2px solid var(--gm)">
+    <img src="${f}" onclick="openLightbox('${f}')">
+    <button class="df" onclick="delFotoNv(${i})">✕</button></div>`).join('');
+  document.getElementById('modal-foto-grid').innerHTML=es+nv;
+}
+function delFotoNv(i){modalFotos.splice(i,1);renderFotoGrid();}
+function delFotoEs(lavId,i){
+  const lav=lavori.find(l=>l.id===lavId);if(!lav)return;
+  lav.foto.splice(i,1);saveStorage();renderTutti();renderFotoGrid();
+}
+function salvaConsuntivo(){
+  const lav=lavori.find(l=>l.id===modalId);if(!lav)return;
+  const stato=document.getElementById('mstato').value;
+  lav.stato=stato;
+  lav.notaMancante=stato==='orange'?document.getElementById('mnota').value:'';
+  lav.foto=[...(lav.foto||[]),...modalFotos];
+  _upsertLavoro(lav);  // salva solo il lavoro modificato su Supabase
+  // Se ci sono nuovi lavori parziali aggiunti da confermaParziale, vengono
+  // salvati da saveStorage() chiamata li dentro.
+  renderTutti(); closeModal();
+  if(stato==='orange') avviaParziale(lav);
+  else disegnaLavoro(lav);
+}
+
+// ── RIPROGRAMMA ──────────────────────────────────────────────────────────────
+let riprogId=null;
+function apriRiprog(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  riprogId=id;
+  document.getElementById('riprog-sub').textContent=(lav.nomeEsteso||lav.nome);
+  document.getElementById('riprog-data').value=fmtData(new Date());
+  document.getElementById('riprog-note').value='';
+  document.getElementById('riprog-ops').innerHTML=OPERATORI.map(op=>`
+    <label class="op" id="rops-${op.id}" onclick="toggleRop('${op.id}')">
+      <input type="checkbox" value="${op.id}"${lav.operatori?.includes(op.nome)?' checked':''}> ${op.nome}
+    </label>`).join('');
+  // Pre-seleziona operatori precedenti
+  lav.operatori?.forEach(nome=>{
+    const op=OPERATORI.find(o=>o.nome===nome);
+    if(op){
+      const el=document.getElementById('rops-'+op.id);
+      if(el){el.classList.add('on');el.querySelector('input').checked=true;}
+    }
+  });
+  document.getElementById('modal-riprog').classList.add('on');
+}
+function closeRiprog(){document.getElementById('modal-riprog').classList.remove('on');riprogId=null;}
+function toggleRop(id){
+  const el=document.getElementById('rops-'+id);
+  const cb=el.querySelector('input');
+  cb.checked=!cb.checked; el.classList.toggle('on',cb.checked);
+}
+function salvaRiprog(){
+  const lav=lavori.find(l=>l.id===riprogId); if(!lav) return;
+  const data=document.getElementById('riprog-data').value;
+  if(!data){alert('Inserisci una data.');return;}
+  const ops=[...document.querySelectorAll('#riprog-ops input:checked')]
+    .map(cb=>OPERATORI.find(o=>o.id===cb.value)?.nome).filter(Boolean);
+  const noteNuove=document.getElementById('riprog-note').value.trim();
+  // Sposta il lavoro in "da fare" con nuovi dati
+  lav.stato='red';
+  lav.data=data;
+  lav.operatori=ops;
+  if(noteNuove) lav.note=(lav.note?lav.note+' | ':'')+noteNuove;
+  lav.daRiprogrammare=false;
+  _upsertLavoro(lav);  // salva solo il lavoro riprogrammato su Supabase
+  renderTutti();
+  disegnaLavoro(lav);
+  closeRiprog();
+  switchTab('da-fare');
+}
+
+// ── DENSIFICA LINEA ───────────────────────────────────────────────────────────
+function densifica(geom,n){
+  if(n<2)n=10;
+  function dst(a,b){const dl=a.lat-b.lat,dn=a.lon-b.lon;return Math.sqrt(dl*dl+dn*dn);}
+  const cum=[0];
+  for(let i=0;i<geom.length-1;i++) cum.push(cum[i]+dst(geom[i],geom[i+1]));
+  const tot=cum[cum.length-1];
+  if(tot===0)return geom;
+  const res=[];
+  for(let k=0;k<n;k++){
+    const td=(k/(n-1))*tot;
+    let seg=0;
+    for(let i=0;i<cum.length-1;i++){if(td<=cum[i+1]){seg=i;break;}if(i===cum.length-2)seg=i;}
+    const sl=cum[seg+1]-cum[seg];
+    const t=sl===0?0:(td-cum[seg])/sl;
+    res.push({lat:geom[seg].lat+(geom[seg+1].lat-geom[seg].lat)*t,
+              lon:geom[seg].lon+(geom[seg+1].lon-geom[seg].lon)*t});
+  }
+  return res;
+}
+
+// ── AVVIA SELEZIONE PARZIALE ──────────────────────────────────────────────────
+function avviaParziale(lav){
+  pLavId=lav.id;
+  pIdxS=-1; pIdxE=-1; pTagli=[]; pZona=-1;
+  pPunti=densificaA10m(lav.geom,25); // punti ogni max 25m reali
+
+  // Mostra zona arancione
+  disegnaLavoro(lav);
+  const ls=overlayLayers[lav.id];
+  const base=ls?Object.values(ls)[0]:null;
+  if(base?.getBounds) map.fitBounds(base.getBounds(),{padding:[60,60]});
+
+  disegnaPunti();
+
+  // Configura banner
+  const isArea=lav.isArea;
+  document.getElementById('pb-strada').style.display=isArea?'none':'block';
+  document.getElementById('pb-area').style.display=isArea?'block':'none';
+  document.getElementById('zona-scelta').style.display='none';
+  document.getElementById('pb-title').textContent=isArea
+    ?'✂️ Definisci il confine dell\'area completata'
+    :'🟢 Seleziona il tratto completato';
+  document.getElementById('pb-sub').textContent=isArea
+    ?lav.nome+' — disegna la linea di taglio con lo strumento linea, poi scegli la zona completata'
+    :lav.nome+' — clicca punto INIZIO poi punto FINE del tratto pulito';
+  // Per le aree: azzera stato taglio (l'utente avvierà manualmente con il bottone)
+  if(isArea){
+    pTaglioGeom=null; drawnTaglio.clearLayers();
+    // NON avviare automaticamente — l'utente usa il bottone "Disegna linea di taglio"
+  }
+  aggiornaConferma();
+  document.getElementById('partial-banner').style.display='block';
+  switchTab('prog'); resetDisegno();
+}
+
+function disegnaPunti(){
+  // Rimuovi markers DOM precedenti
+  document.querySelectorAll('.pmarker-dot').forEach(e=>e.remove());
+  pMarkers=[];
+  if(pLayer){map.removeLayer(pLayer);pLayer=null;}
+
+  const container=map.getContainer();
+
+  pPunti.forEach((p,i)=>{
+    const el=document.createElement('div');
+    el.className='pmarker-dot';
+    el.style.cssText=`position:absolute;z-index:1100;transform:translate(-50%,-50%);
+      width:22px;height:22px;border-radius:50%;
+      background:#E67E22;border:3px solid #fff;
+      box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;touch-action:none;`;
+    // Etichetta numero
+    const lbl=document.createElement('span');
+    lbl.style.cssText='position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#E67E22;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px #fff';
+    lbl.textContent=i+1;
+    el.appendChild(lbl);
+    container.appendChild(el);
+
+    // Posiziona in pixel
+    const posiziona=()=>{
+      const pt=map.latLngToContainerPoint([p.lat,p.lon]);
+      el.style.left=pt.x+'px'; el.style.top=pt.y+'px';
+    };
+    posiziona();
+
+    // Click/tap senza drag → seleziona punto
+    let touchMoved=false;
+    el.addEventListener('touchstart',e=>{touchMoved=false;},{passive:true});
+    el.addEventListener('touchmove',e=>{touchMoved=true;},{passive:true});
+    el.addEventListener('touchend',e=>{
+      if(!touchMoved){e.preventDefault();e.stopPropagation();clickPunto(i);}
+    });
+    el.addEventListener('click',e=>{e.stopPropagation();clickPunto(i);});
+
+    pMarkers.push({el,posiziona,idx:i});
+  });
+
+  // Aggiorna posizioni al pan/zoom
+  map.off('move',aggiornaPosizionePunti);
+  map.on('move',aggiornaPosizionePunti);
+}
+
+function aggiornaPosizionePunti(){
+  pMarkers.forEach((m,i)=>{
+    const p=pPunti[i]; if(!p) return;
+    const pt=map.latLngToContainerPoint([p.lat,p.lon]);
+    m.el.style.left=pt.x+'px'; m.el.style.top=pt.y+'px';
+  });
+}
+
+function clickPunto(i){
+  const lav=lavori.find(l=>l.id===pLavId); if(!lav) return;
+  if(!lav.isArea){
+    // Strada: primo click = inizio, secondo = fine
+    if(pIdxS===-1){pIdxS=i;}
+    else if(pIdxE===-1&&i!==pIdxS){
+      pIdxE=i;
+      if(pIdxE<pIdxS){const t=pIdxS;pIdxS=pIdxE;pIdxE=t;}
+    } else {pIdxS=i;pIdxE=-1;}
+    aggiornaPreviewStrada();
+    aggiornaBannerStrada();
+  } else {
+    // Area: esattamente 2 punti di taglio sul perimetro
+    if(pTagli.length===0){
+      pTagli=[i];
+    } else if(pTagli.length===1&&i!==pTagli[0]){
+      pTagli=[pTagli[0],i];
+      pTagli.sort((a,b)=>a-b);
+      document.getElementById('zona-scelta').style.display='block';
+      aggiornaPreviewArea();
+    } else {
+      // Terzo click: ricomincia
+      pTagli=[i];
+      pZona=-1;
+      document.getElementById('zona-scelta').style.display='none';
+      const lav2=lavori.find(l=>l.id===pLavId);
+      if(lav2) disegnaLavoro(lav2);
+      // reset stile bottoni zona
+      document.getElementById('btn-za').className='zs-btn';
+      document.getElementById('btn-zb').className='zs-btn';
+    }
+    aggiornaBannerArea();
+  }
+  aggiornaConferma();
+}
+
+// ── PREVIEW STRADA ────────────────────────────────────────────────────────────
+function aggiornaPreviewStrada(){
+  const lav=lavori.find(l=>l.id===pLavId); if(!lav) return;
+  rimuoviLayer(lav.id);
+  const layers={};
+  const W=6;
+  if(pIdxS!==-1&&pIdxE!==-1){
+    if(pIdxS>0){
+      const l=L.polyline(pPunti.slice(0,pIdxS+1).map(p=>[p.lat,p.lon]),{color:'#E67E22',weight:W,opacity:1});
+      l.addTo(map); layers.r1=l;
+    }
+    if(pIdxE<pPunti.length-1){
+      const l=L.polyline(pPunti.slice(pIdxE).map(p=>[p.lat,p.lon]),{color:'#E67E22',weight:W,opacity:1});
+      l.addTo(map); layers.r2=l;
+    }
+    const lv=L.polyline(pPunti.slice(pIdxS,pIdxE+1).map(p=>[p.lat,p.lon]),{color:'#1E6B3C',weight:W,opacity:1});
+    lv.addTo(map); layers.v=lv;
+  } else {
+    const la=L.polyline(pPunti.map(p=>[p.lat,p.lon]),{color:'#E67E22',weight:W,opacity:1});
+    la.addTo(map); layers.base=la;
+  }
+  overlayLayers[lav.id]=layers;
+  aggiornaCerchi();
+}
+
+function aggiornaCerchi(){
+  const lav=lavori.find(l=>l.id===pLavId);
+  pMarkers.forEach(({el},i)=>{
+    let fill='#E67E22', size=22;
+    if(lav?.isArea){
+      if(pTagli.includes(i)){fill='#1A4F7A';size=26;}
+    } else {
+      if(pIdxS!==-1&&pIdxE!==-1&&i>=pIdxS&&i<=pIdxE){fill='#1E6B3C';}
+      else if(i===pIdxS||i===pIdxE){fill='#1E6B3C';size=26;}
+    }
+    el.style.background=fill;
+    el.style.width=size+'px'; el.style.height=size+'px';
+    el.style.border=size>22?'3px solid #fff':'3px solid #fff';
+  });
+}
+
+// ── PREVIEW AREA ──────────────────────────────────────────────────────────────
+function calcolaArchi(){
+  if(pTagli.length<2||pPunti.length<3) return {a:[],b:[]};
+  const ia=pTagli[0], ib=pTagli[1];
+  // Arco A: dal punto ia al punto ib seguendo il perimetro in senso diretto
+  const arcA=pPunti.slice(ia,ib+1);
+  // Arco B: dal punto ib a fine + dall'inizio al punto ia
+  const arcB=[...pPunti.slice(ib),...pPunti.slice(0,ia+1)];
+  return {a:arcA, b:arcB};
+}
+
+function aggiornaPreviewArea(){
+  const lav=lavori.find(l=>l.id===pLavId); if(!lav) return;
+  if(!pTaglioGeom||pTaglioGeom.length<2) return;
+  const {a,b}=calcolaArchi();
+  rimuoviLayer(lav.id);
+  const layers={};
+  const W=3;
+  const gA=a.map(p=>[p.lat,p.lon]);
+  const gB=b.map(p=>[p.lat,p.lon]);
+  if(pZona===0){
+    // A=verde, B=arancione
+    if(gA.length>=3){const l=L.polygon([...gA,gA[0]],{color:'#1E6B3C',fillColor:'#1E6B3C',fillOpacity:.35,weight:W});l.bindTooltip('✅ Zona A',{sticky:true});l.addTo(map);layers.v=l;}
+    if(gB.length>=3){const l=L.polygon([...gB,gB[0]],{color:'#E67E22',fillColor:'#E67E22',fillOpacity:.2,weight:W,dashArray:'5,3'});l.bindTooltip('⚠️ Zona B',{sticky:true});l.addTo(map);layers.o=l;}
+  } else if(pZona===1){
+    // B=verde, A=arancione
+    if(gB.length>=3){const l=L.polygon([...gB,gB[0]],{color:'#1E6B3C',fillColor:'#1E6B3C',fillOpacity:.35,weight:W});l.bindTooltip('✅ Zona B',{sticky:true});l.addTo(map);layers.v=l;}
+    if(gA.length>=3){const l=L.polygon([...gA,gA[0]],{color:'#E67E22',fillColor:'#E67E22',fillOpacity:.2,weight:W,dashArray:'5,3'});l.bindTooltip('⚠️ Zona A',{sticky:true});l.addTo(map);layers.o=l;}
+  } else {
+    // Nessuna selezione: mostra entrambe in grigio/arancione
+    if(gA.length>=3){const l=L.polygon([...gA,gA[0]],{color:'#1A4F7A',fillColor:'#1A4F7A',fillOpacity:.15,weight:W});l.bindTooltip('Zona A',{sticky:true});l.addTo(map);layers.a=l;}
+    if(gB.length>=3){const l=L.polygon([...gB,gB[0]],{color:'#E67E22',fillColor:'#E67E22',fillOpacity:.15,weight:W});l.bindTooltip('Zona B',{sticky:true});l.addTo(map);layers.b=l;}
+  }
+  overlayLayers[lav.id]=layers;
+  aggiornaCerchi();
+}
+
+function selZona(z){
+  pZona=z;
+  aggiornaPreviewArea();
+  document.getElementById('btn-za').className='zs-btn'+(z===0?' sel-green':' sel-orange');
+  document.getElementById('btn-zb').className='zs-btn'+(z===1?' sel-green':' sel-orange');
+  aggiornaConferma();
+}
+
+// ── BANNER UPDATE ─────────────────────────────────────────────────────────────
+function aggiornaBannerStrada(){
+  const dot=(id,on,txt,id2)=>{
+    document.getElementById(id).style.background=on?'#1E6B3C':'#ccc';
+    document.getElementById(id).style.borderColor=on?'#1E6B3C':'#999';
+    document.getElementById(id2).textContent=txt;
+    document.getElementById(id2).style.color=on?'var(--gr)':'var(--mut)';
+  };
+  dot('dot-s',pIdxS!==-1,pIdxS!==-1?`Inizio: punto ${pIdxS+1}`:'Punto inizio: clicca','lbl-s');
+  dot('dot-e',pIdxE!==-1,pIdxE!==-1?`Fine: punto ${pIdxE+1}`:'Punto fine: clicca','lbl-e');
+  if(pIdxS!==-1&&pIdxE!==-1)
+    document.getElementById('pb-sub').textContent=`Tratto ${pIdxS+1}→${pIdxE+1} selezionato. Conferma o modifica.`;
+}
+function aggiornaBannerArea(){
+  const dot=(id,on,txt,id2)=>{
+    document.getElementById(id).style.background=on?'#1A4F7A':'#ccc';
+    document.getElementById(id).style.borderColor=on?'#1A4F7A':'#999';
+    document.getElementById(id2).textContent=txt;
+  };
+  dot('dot-t1',pTagli.length>=1,pTagli.length>=1?`Taglio 1: punto ${pTagli[0]+1}`:'Punto taglio 1: clicca','lbl-t1');
+  dot('dot-t2',pTagli.length>=2,pTagli.length>=2?`Taglio 2: punto ${pTagli[pTagli.length-1]+1}`+(pTagli.length>2?` (+${pTagli.length-2} intermedi)`:'' ):'Punto taglio 2: clicca','lbl-t2');
+}
+function aggiornaConferma(){
+  const lav=lavori.find(l=>l.id===pLavId);
+  const ok=lav?.isArea
+    ?(pTagli.length===2&&pZona!==-1)
+    :(pIdxS!==-1&&pIdxE!==-1);
+  const btn=document.getElementById('btn-conf');
+  btn.classList.toggle('ok',ok);
+  btn.disabled=!ok;
+}
+
+// ── CONFERMA PARZIALE ─────────────────────────────────────────────────────────
+async function confermaParziale(){
+  const lav=lavori.find(l=>l.id===pLavId); if(!lav) return;
+  const btn=document.getElementById('btn-conf');
+  btn.textContent='⏳…'; btn.disabled=true;
+
+  async function descPunto(p){
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${p.lat}&lon=${p.lon}&format=json&zoom=18&accept-language=it`).then(r=>r.json());
+      const a=r.address||{};
+      if(a.road&&a.road!==lav.nome) return a.road;
+      if(a.house_number) return 'civico '+a.house_number;
+      if(a.suburb) return a.suburb;
+      return '';
+    }catch(e){return '';}
+  }
+
+  if(!lav.isArea){
+    // ── STRADA ──
+    const gV=pPunti.slice(pIdxS,pIdxE+1);
+    const gPrima=pIdxS>0?pPunti.slice(0,pIdxS+1):[];
+    const gDopo=pIdxE<pPunti.length-1?pPunti.slice(pIdxE):[];
+
+    const [d1,d2]=await Promise.all([descPunto(gV[0]),descPunto(gV[gV.length-1])]);
+    const descV=d1&&d2&&d1!==d2?`tra ${d1} e ${d2}`:d1?`da ${d1}`:d2?`fino a ${d2}`:'';
+
+    // Aggiorna lavoro originale → tratto completato
+    lav.stato='green';
+    lav.geom=gV;
+    lav.misura=calcolaLunghezza(gV);
+    lav.nomeEsteso=lav.nome+(descV?' — '+descV:'');
+    lav.notaMancante='';
+
+    // Nuovi lavori per i tratti restanti
+    for(const [g,suf] of [[gPrima,'_a'],[gDopo,'_b']]){
+      if(g.length>=2){
+        const [da,db]=await Promise.all([descPunto(g[0]),descPunto(g[g.length-1])]);
+        const desc=da&&db&&da!==db?`tra ${da} e ${db}`:da?`da ${da}`:db?`fino a ${db}`:'';
+        lavori.push({
+          id:'lav_'+Date.now()+suf,nome:lav.nome,
+          nomeEsteso:lav.nome+(desc?' — '+desc:''),
+          data:lav.data,tipo:lav.tipo,note:lav.note,operatori:lav.operatori,
+          stato:'orange',notaMancante:'Da completare'+(desc?' ('+desc+')':''),
+          daRiprogrammare:true,
+          geom:g,isArea:false,misura:calcolaLunghezza(g),foto:[],
+          codice:generaCodice(),codiceOrigine:lav.codice||null
+        });
+      }
+    }
+  } else {
+    // ── AREA ──
+    const {a,b}=calcolaArchi();
+    const [gV,gO]=pZona===0?[a,b]:[b,a];
+
+    async function descCentroide(g){
+      const lat=g.reduce((s,p)=>s+p.lat,0)/g.length;
+      const lon=g.reduce((s,p)=>s+p.lon,0)/g.length;
+      return descPunto({lat,lon});
+    }
+    const [dV,dO]=await Promise.all([descCentroide(gV),descCentroide(gO)]);
+
+    lav.stato='green';
+    lav.geom=gV;
+    lav.misura=calcolaArea(gV);
+    lav.nomeEsteso=lav.nome+(dV?' — zona '+dV:'');
+    lav.notaMancante='';
+
+    if(gO.length>=3){
+      lavori.push({
+        id:'lav_'+Date.now()+'_r',nome:lav.nome,
+        nomeEsteso:lav.nome+(dO?' — zona '+dO:''),
+        data:lav.data,tipo:lav.tipo,note:lav.note,operatori:lav.operatori,
+        stato:'orange',notaMancante:'Da completare'+(dO?' (zona '+dO+')':''),
+        daRiprogrammare:true,
+        geom:gO,isArea:true,misura:calcolaArea(gO),foto:[],
+        codice:generaCodice(),codiceOrigine:lav.codice||null
+      });
+    }
+  }
+
+  saveStorage();
+  chiudiParziale();
+  renderAllOverlays();
+  renderTutti();
+}
+
+function annullaParziale(){chiudiParziale();}
+function resetParziale(){
+  document.querySelectorAll('.pmarker-dot').forEach(e=>e.remove());
+  pIdxS=-1;pIdxE=-1;pTagli=[];pZona=-1;
+  pTaglioGeom=null; drawnTaglio.clearLayers();
+  document.getElementById('zona-scelta').style.display='none';
+  const btnAvvia=document.getElementById('btn-avvia-taglio');
+  if(btnAvvia) btnAvvia.style.display='flex';
+  const stato=document.getElementById('pb-taglio-stato');
+  if(stato) stato.style.display='none';
+  const lav=lavori.find(l=>l.id===pLavId);
+  if(lav) disegnaLavoro(lav);
+  disegnaPunti();
+  aggiornaBannerStrada();
+  aggiornaBannerArea();
+  aggiornaConferma();
+}
+function chiudiParziale(){
+  map.off('move',aggiornaPosizionePunti);
+  document.querySelectorAll('.pmarker-dot').forEach(e=>e.remove());
+  document.getElementById('partial-banner').style.display='none';
+  document.getElementById('zona-scelta').style.display='none';
+  const btnAvvia=document.getElementById('btn-avvia-taglio');
+  if(btnAvvia) btnAvvia.style.display='flex';
+  const stato=document.getElementById('pb-taglio-stato');
+  if(stato) stato.style.display='none';
+  if(pLayer){map.removeLayer(pLayer);pLayer=null;}
+  drawnTaglio.clearLayers();
+  annullaDisegno();
+  pTaglioGeom=null;
+  pMarkers=[];pPunti=[];pIdxS=-1;pIdxE=-1;pTagli=[];pZona=-1;pLavId=null;
+}
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+function openLightbox(src){document.getElementById('lbimg').src=src;document.getElementById('lightbox').classList.add('on');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('on');}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function showLoader(v){document.getElementById('loader').style.display=v?'block':'none';}
+function hideAreas(){['hint-main','area-match','area-form'].forEach(id=>document.getElementById(id).style.display='none');}
+function setHint(type,html){
+  const h=document.getElementById('hint-main');
+  h.className='hint '+(type||''); h.innerHTML=html; h.style.display='block';
+}
+function resetDisegno(){
+  drawn.clearLayers(); selectedGeom=null; selectedIsArea=false; selectedIsPunto=false; selectedMisura=0;
+  edificioSelezionato=null;
+  annullaDisegno();
+  document.getElementById('area-match').style.display='none';
+  document.getElementById('area-form').style.display='none';
+  const ew=document.getElementById('edificio-form-wrap'); if(ew) ew.style.display='none';
+  const eb=document.getElementById('edificio-btn-wrap'); if(eb) eb.style.display='block';
+  setHint('','<b>✏️ Disegna la zona da pulire</b>Usa i pulsanti in alto a sinistra: <b>Punto</b> per segnalazioni, <b>Linea</b> per strade, <b>Poligono</b> per aree.');
+}
+// ── PERSISTENZA SU SUPABASE ──────────────────────────────────────────────────
+// saveStorage() è chiamata dal codice originale dopo ogni modifica.
+// Qui eseguiamo un upsert completo dell'array lavori (insert or update).
+// Le operazioni sono asincrone ma non bloccano la UI.
+
+async function _upsertLavoro(lav){
+  const {error}=await _supa.from('lavori').upsert(lavToRow(lav),{onConflict:'id'});
+  if(error){showDbStatus('❌ Salvataggio fallito: '+error.message,'err');console.error(error);}
+  else showDbStatus('✅ Salvato','ok');
+}
+async function _deleteLavoro(id){
+  const {error}=await _supa.from('lavori').delete().eq('id',id);
+  if(error){showDbStatus('❌ Eliminazione fallita: '+error.message,'err');console.error(error);}
+  else showDbStatus('✅ Eliminato','ok');
+}
+
+// saveStorage viene chiamata dopo ogni modifica al vettore lavori.
+// Sincronizziamo l'intero array (upsert di tutti) in modo semplice e sicuro.
+function saveStorage(){
+  showDbStatus('💾 Salvataggio…','info');
+  Promise.all(lavori.map(_upsertLavoro)).then(()=>{
+    showDbStatus('✅ Dati salvati','ok');
+  });
+}
+function switchTab(t){
+  document.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
+  ['prog','da-fare','parziali','completati'].forEach(id=>{
+    const el=document.getElementById('tab-'+id);
+    if(id===t){ el.style.display=(id==='prog')?'block':'flex'; }
+    else { el.style.display='none'; }
+  });
+  // Aggiorna mappa ad ogni cambio tab (i filtri temporali si basano sul tab attivo)
+  setTimeout(aggiornaMappaGlobale, 0);
+  if(t!=='prog'){
+  } else {
+    // In modalità solo schede, avviare il disegno è impossibile:
+    // suggerisci di attivare la mappa se non è visibile
+    const eb=document.getElementById('edificio-btn-wrap');
+    if(eb) eb.style.display='block';
+    const ef=document.getElementById('edificio-form-wrap');
+    if(ef && ef.style.display!=='none'){} // lascia aperto se in corso
+  }
+}
+document.querySelectorAll('.ptab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+
+
+// aggiornaToolbarDisegno e iniziaFiltri ora chiamati in selezionaRuolo
+
+// ── STAMPA PDF ────────────────────────────────────────────────────────────────
+function apriModalStampa(){
+  // Aggiorna descrizioni date
+  const fmt=d=>d.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'long',year:'numeric'});
+  const oggi=new Date(); oggi.setHours(0,0,0,0);
+  document.getElementById('pp-desc-oggi').textContent=fmt(oggi); // toLocaleDateString è locale, ok
+
+  const lun=new Date(oggi); lun.setDate(oggi.getDate()-((oggi.getDay()+6)%7));
+  const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+  document.getElementById('pp-desc-settimana').textContent=
+    lun.toLocaleDateString('it-IT',{day:'2-digit',month:'long'})+' – '+
+    dom.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+
+  const lunP=new Date(lun); lunP.setDate(lun.getDate()+7);
+  const domP=new Date(lunP); domP.setDate(lunP.getDate()+6);
+  document.getElementById('pp-desc-prossima').textContent=
+    lunP.toLocaleDateString('it-IT',{day:'2-digit',month:'long'})+' – '+
+    domP.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+
+  document.getElementById('modal-stampa').classList.add('on');
+}
+function chiudiModalStampa(){
+  document.getElementById('modal-stampa').classList.remove('on');
+}
+
+function stampaPDF(periodo){
+  chiudiModalStampa();
+  // Calcola range date
+  const oggi=new Date(); oggi.setHours(0,0,0,0);
+  const fmt=d=>fmtData(d); // usa fmtData locale (no bug timezone)
+  const fmtIT=d=>d.toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const fmtITshort=d=>d.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+
+  let da,a,titoloperiodo;
+  if(periodo==='oggi'){
+    da=a=fmt(oggi);
+    titoloperiodo='Ordine del giorno — '+fmtIT(oggi);
+  } else if(periodo==='settimana'){
+    const lun=new Date(oggi); lun.setDate(oggi.getDate()-((oggi.getDay()+6)%7));
+    const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+    da=fmt(lun); a=fmt(dom);
+    titoloperiodo='Ordine dei lavori — Settimana '+fmtITshort(lun)+' / '+fmtITshort(dom);
+  } else {
+    const lun=new Date(oggi); lun.setDate(oggi.getDate()-((oggi.getDay()+6)%7)+7);
+    const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+    da=fmt(lun); a=fmt(dom);
+    titoloperiodo='Ordine dei lavori — Settimana '+fmtITshort(lun)+' / '+fmtITshort(dom);
+  }
+
+  // Filtra lavori da fare nel periodo (tutti i tipi)
+  const lavDaFare=lavori.filter(l=>{
+    if(l.stato!=='red') return false;
+    const d=l.data||'';
+    return d>=da && d<=a;
+  });
+
+  if(!lavDaFare.length){
+    alert('Nessun intervento programmato nel periodo selezionato.');
+    return;
+  }
+
+  // Raggruppa per data
+  const gruppi={};
+  lavDaFare.forEach(l=>{
+    const d=l.data||'—';
+    if(!gruppi[d]) gruppi[d]=[];
+    gruppi[d].push(l);
+  });
+  const dateOrd=Object.keys(gruppi).sort();
+
+  // Genera HTML per la finestra di stampa
+  const tipoIcon=t=>t==='Raccolta rifiuti'?'🗑':t==='Spazzamento stradale'?'🧹':
+    t==='Pulizia parco / area verde'?'🌳':t==='Diserbo marciapiedi'?'🌿':
+    t==='Svuotamento cestini'?'🗑':t==='Pulizia piazza'?'🏛':'📋';
+
+  const geomIcon=l=>l.isPunto?'📍':l.isArea?'🟦':'〰️';
+
+  const formatMisuraStr=l=>{
+    if(!l.misura) return '';
+    if(l.isArea) return l.misura.toLocaleString('it')+' m²'+(l.perimetro?' · per. '+l.perimetro.toLocaleString('it')+' m':'');
+    return l.misura.toLocaleString('it')+' m';
+  };
+
+  let righe='';
+  dateOrd.forEach(d=>{
+    const dataObj=new Date(d+'T00:00:00');
+    const dataLabel=dataObj.toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    const lista=gruppi[d];
+    righe+=`
+      <div class="giorno-block">
+        <div class="giorno-hdr">
+          <span class="giorno-label">${dataLabel}</span>
+          <span class="giorno-cnt">${lista.length} intervento${lista.length!==1?'i':''}</span>
+        </div>
+        <table class="interventi-table">
+          <thead>
+            <tr>
+              <th style="width:30px">#</th>
+              <th style="width:90px">Data</th>
+              <th>Zona / Nome</th>
+              <th>Tipo</th>
+              <th>Operatori</th>
+              <th>Misura</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lista.map((l,i)=>{
+              const dataObjR=new Date((l.data||'')+'T00:00:00');
+              const dataStampa=l.data?dataObjR.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+              return `
+            <tr class="${i%2===0?'row-even':'row-odd'}">
+              <td class="num">${i+1}</td>
+              <td class="mono" style="font-size:8pt;white-space:nowrap">${dataStampa}</td>
+              <td><span class="geom-icon">${geomIcon(l)}</span> <strong>${l.nomeEsteso||l.nome}</strong></td>
+              <td>${tipoIcon(l.tipo)} ${l.tipo}</td>
+              <td>${l.operatori?.join(', ')||'—'}</td>
+              <td class="mono">${formatMisuraStr(l)||'—'}</td>
+              <td class="note">${l.note||''}</td>
+            </tr>`;}).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  });
+
+  const stampato=new Date().toLocaleString('it-IT');
+  const html=`<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>${titoloperiodo}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',Arial,sans-serif;font-size:11pt;color:#1A1816;background:#fff;padding:0}
+  @page{size:A4 landscape;margin:18mm 16mm 16mm 16mm}
+  @media print{
+    body{padding:0}
+    .no-print{display:none!important}
+    .giorno-block{page-break-inside:avoid}
+  }
+  /* INTESTAZIONE */
+  .intestazione{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #1E6B3C;padding-bottom:12px;margin-bottom:18px}
+  .logo-area{display:flex;align-items:center;gap:12px}
+  .logo-box{width:44px;height:44px;background:#1E6B3C;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo-box svg{color:#fff;stroke:#fff}
+  .intestazione h1{font-size:15pt;font-weight:700;color:#1E6B3C;line-height:1.2}
+  .intestazione h2{font-size:11pt;font-weight:500;color:#3a3a3a;margin-top:3px}
+  .meta-box{text-align:right;font-size:8.5pt;color:#7A756E;line-height:1.7}
+  .meta-box strong{color:#1A1816}
+  /* RIEPILOGO */
+  .riepilogo{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .riq{flex:1;min-width:120px;border:1px solid #E0DCD4;border-radius:8px;padding:10px 14px;background:#F4F2ED}
+  .riq-n{font-size:20pt;font-weight:700;color:#1E6B3C;line-height:1}
+  .riq-l{font-size:8.5pt;color:#7A756E;margin-top:3px}
+  /* GIORNI */
+  .giorno-block{margin-bottom:20px}
+  .giorno-hdr{display:flex;align-items:center;justify-content:space-between;background:#1E6B3C;color:#fff;padding:7px 12px;border-radius:6px 6px 0 0}
+  .giorno-label{font-size:10.5pt;font-weight:700;text-transform:capitalize}
+  .giorno-cnt{font-size:9pt;opacity:.8}
+  /* TABELLA */
+  .interventi-table{width:100%;border-collapse:collapse;font-size:9.5pt}
+  .interventi-table thead tr{background:#E6F3EC}
+  .interventi-table th{padding:6px 10px;text-align:left;font-size:8pt;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#1E6B3C;border-bottom:2px solid #9DCFB0}
+  .interventi-table td{padding:8px 10px;border-bottom:1px solid #E0DCD4;vertical-align:top;line-height:1.4}
+  .row-even td{background:#fff}
+  .row-odd td{background:#F9F8F5}
+  .interventi-table td.num{font-weight:700;color:#7A756E;font-size:9pt;text-align:center}
+  .interventi-table td.mono{font-family:'DM Mono',monospace;font-size:8.5pt;color:#1A4F7A;white-space:nowrap}
+  .interventi-table td.note{font-size:8.5pt;color:#7A756E;font-style:italic}
+  .geom-icon{font-size:10pt}
+  /* PIÈ DI PAGINA */
+  .footer{margin-top:24px;border-top:1px solid #E0DCD4;padding-top:10px;display:flex;justify-content:space-between;font-size:8pt;color:#7A756E}
+  /* BARRA AZIONI (no print) */
+  .action-bar{position:fixed;bottom:0;left:0;right:0;background:#1E6B3C;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -2px 12px rgba(0,0,0,.2)}
+  .action-bar span{font-size:12pt;font-weight:600}
+  .action-bar button{padding:9px 22px;border-radius:8px;font-size:11pt;font-weight:700;cursor:pointer;font-family:inherit;transition:.13s}
+  .btn-print{background:#fff;color:#1E6B3C;border:none}
+  .btn-print:hover{background:#E6F3EC}
+  .btn-close{background:transparent;color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.4)}
+  .btn-close:hover{background:rgba(255,255,255,.1);color:#fff}
+  body{padding-bottom:64px}
+  @media print{.action-bar{display:none}body{padding-bottom:0}}
+</style>
+</head>
+<body>
+
+<div class="intestazione">
+  <div class="logo-area">
+    <div class="logo-box">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <div>
+      <h1>Pulizie Urbane – Castel di Lama</h1>
+      <h2>${titoloperiodo}</h2>
+    </div>
+  </div>
+  <div class="meta-box">
+    <div>Stampato il <strong>${stampato}</strong></div>
+    <div>Totale interventi: <strong>${lavDaFare.length}</strong></div>
+    <div>Giornate: <strong>${dateOrd.length}</strong></div>
+  </div>
+</div>
+
+<div class="riepilogo">
+  <div class="riq"><div class="riq-n">${lavDaFare.length}</div><div class="riq-l">Interventi totali</div></div>
+  <div class="riq"><div class="riq-n">${dateOrd.length}</div><div class="riq-l">Giornate lavorative</div></div>
+  <div class="riq"><div class="riq-n">${lavDaFare.filter(l=>!l.isPunto&&!l.isArea).length}</div><div class="riq-l">Strade / linee</div></div>
+  <div class="riq"><div class="riq-n">${lavDaFare.filter(l=>l.isArea).length}</div><div class="riq-l">Aree / piazze</div></div>
+  <div class="riq"><div class="riq-n">${lavDaFare.filter(l=>l.isPunto).length}</div><div class="riq-l">Punti / edifici</div></div>
+</div>
+
+${righe}
+
+<div class="footer">
+  <span>Comune di Castel di Lama — Pulizie Urbane</span>
+  <span>Documento generato automaticamente il ${stampato}</span>
+</div>
+
+<div class="action-bar no-print">
+  <span>🖨 Ordine dei lavori pronto</span>
+  <div style="display:flex;gap:8px">
+    <button class="btn-close" onclick="window.close()">✕ Chiudi</button>
+    <button class="btn-print" onclick="window.print()">🖨 Stampa / Salva PDF</button>
+  </div>
+</div>
+
+</div><!-- /main-app -->
+</body>
+</html>`;
+
+  const w=window.open('','_blank','width=1100,height=780');
+  if(!w){alert('Popup bloccati. Consenti i popup per questo sito e riprova.');return;}
+  w.document.write(html);
+  w.document.close();
+  // Auto-apri dialogo stampa dopo un istante
+  w.onload=()=>{ setTimeout(()=>w.print(),400); };
+}
+
+// ── MODIFICA INTERVENTO DA FARE ──────────────────────────────────────────────
+let editLavModalId=null;
+let editLavGeomChanged=false;
+
+function apriEditLav(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  editLavModalId=id;
+  editLavGeomChanged=false;
+
+  // Popola campi
+  document.getElementById('medit-sub').textContent=(lav.nomeEsteso||lav.nome)+' · '+lav.data;
+  document.getElementById('medit-nome').value=lav.nome;
+  document.getElementById('medit-data').value=lav.data||'';
+  document.getElementById('medit-tipo').value=lav.tipo||'Raccolta rifiuti';
+  document.getElementById('medit-note').value=lav.note||'';
+
+  // Operatori
+  document.getElementById('medit-ops').innerHTML=OPERATORI.map(op=>{
+    const sel=lav.operatori?.includes(op.nome);
+    return `<label class="op${sel?' on':''}" id="meop-${op.id}" onclick="toggleMeop('${op.id}')">
+      <input type="checkbox" value="${op.id}"${sel?' checked':''}> ${op.nome}
+    </label>`;
+  }).join('');
+
+  // Geometria: mostra bottone appropriato
+  document.getElementById('medit-btn-geom').style.display=lav.isPunto?'none':'flex';
+  document.getElementById('medit-btn-punto').style.display=lav.isPunto?'flex':'none';
+  document.getElementById('medit-geom-hint').style.display='none';
+  document.getElementById('medit-btn-geom').classList.remove('active');
+  document.getElementById('medit-btn-punto').classList.remove('active');
+
+  document.getElementById('modal-edit-lav').classList.add('on');
+}
+
+function chiudiEditLav(){
+  // Se la modifica geometria era attiva, annullala
+  if(editLavGeomChanged){
+    terminaModifica(false);
+    editLavGeomChanged=false;
+  }
+  if(editLavPuntoMode){
+    chiudiEditPuntoMode();
+  }
+  editLavModalId=null;
+  document.getElementById('modal-edit-lav').classList.remove('on');
+}
+
+function toggleMeop(id){
+  const el=document.getElementById('meop-'+id);
+  const cb=el.querySelector('input');
+  cb.checked=!cb.checked; el.classList.toggle('on',cb.checked);
+}
+
+function avviaModificaGeomDaModal(){
+  const lav=lavori.find(l=>l.id===editLavModalId); if(!lav) return;
+  // Chiudi il modal temporaneamente, avvia la modifica geometria
+  document.getElementById('modal-edit-lav').classList.remove('on');
+  editLavGeomChanged=true;
+  avviaModifica(editLavModalId);
+  // Intercetta il salvataggio della geometria: override terminaModifica
+  // Mostriamo messaggio nell'hint e riapriremo il modal quando l'utente salva la geometria
+  document.getElementById('medit-geom-hint').style.display='block';
+  document.getElementById('medit-btn-geom').classList.add('active');
+  // Aggiungi ai bottoni edit-toolbar un link per tornare al modal
+  const toolbar=document.getElementById('edit-toolbar');
+  if(toolbar&&!toolbar.querySelector('#btn-torna-modal')){
+    const btn=document.createElement('button');
+    btn.id='btn-torna-modal';
+    btn.style.cssText='padding:6px 14px;border-radius:6px;border:1px solid var(--or);background:var(--ol);font-size:12px;cursor:pointer;font-family:inherit;color:var(--or);font-weight:600';
+    btn.textContent='← Torna al form';
+    btn.onclick=()=>{ terminaModifica(true); editLavGeomChanged=false; riaprìEditLav(); };
+    toolbar.querySelector('div>div:last-child').prepend(btn);
+  }
+}
+
+function riaprìEditLav(){
+  // Rimuovi bottone temporaneo
+  const btn=document.getElementById('btn-torna-modal'); if(btn) btn.remove();
+  // Riapri il modal
+  if(editLavModalId) apriEditLav(editLavModalId);
+}
+
+// Modifica posizione punto (trascina mirino)
+let editLavPuntoMode=false;
+let editLavPuntoOrigGeom=null;
+
+function avviaModificaPuntoDaModal(){
+  const lav=lavori.find(l=>l.id===editLavModalId); if(!lav||!lav.isPunto) return;
+  editLavPuntoMode=true;
+  editLavPuntoOrigGeom=[...lav.geom];
+  document.getElementById('modal-edit-lav').classList.remove('on');
+  document.getElementById('medit-btn-punto').classList.add('active');
+  // Attiva la modalità "mappa visibile"
+  if(!mappaVisibile) toggleMappa();
+  // Centra mappa sul punto
+  map.setView([lav.geom[0].lat,lav.geom[0].lon??lav.geom[0].lng],18,{animate:true});
+  // Mostra overlay apposito
+  let overlay=document.getElementById('edit-punto-overlay');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='edit-punto-overlay';
+    overlay.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:2000;background:#fff;border:2px solid var(--bl);border-radius:12px;padding:12px 18px;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;white-space:nowrap';
+    overlay.innerHTML=`<span style="font-size:13px;font-weight:600;color:var(--bl)">📍 Centra il mirino sul nuovo punto</span>
+      <button onclick="confermaEditPunto()" style="padding:6px 14px;border-radius:7px;border:none;background:var(--gr);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✓ Posiziona qui</button>
+      <button onclick="annullaEditPunto()" style="padding:6px 10px;border-radius:7px;border:1px solid var(--brd);background:transparent;font-size:12px;cursor:pointer;font-family:inherit;color:var(--mut)">✕</button>`;
+    document.body.appendChild(overlay);
+  } else { overlay.style.display='flex'; }
+  // Mostra mirino
+  document.getElementById('crosshair').style.display='block';
+}
+
+function confermaEditPunto(){
+  const lav=lavori.find(l=>l.id===editLavModalId); if(!lav) return;
+  const center=map.getCenter();
+  lav.geom=[{lat:center.lat,lon:center.lng}];
+  chiudiEditPuntoMode();
+  // Ridisegna marker
+  disegnaLavoro(lav);
+  apriEditLav(editLavModalId);
+}
+
+function annullaEditPunto(){
+  const lav=lavori.find(l=>l.id===editLavModalId);
+  if(lav&&editLavPuntoOrigGeom) lav.geom=editLavPuntoOrigGeom;
+  chiudiEditPuntoMode();
+  apriEditLav(editLavModalId);
+}
+
+function chiudiEditPuntoMode(){
+  editLavPuntoMode=false;
+  editLavPuntoOrigGeom=null;
+  const overlay=document.getElementById('edit-punto-overlay');
+  if(overlay) overlay.style.display='none';
+  document.getElementById('crosshair').style.display='none';
+}
+
+function salvaEditLav(){
+  const lav=lavori.find(l=>l.id===editLavModalId); if(!lav) return;
+  const nuovoNome=document.getElementById('medit-nome').value.trim();
+  const nuovaData=document.getElementById('medit-data').value;
+  if(!nuovoNome||!nuovaData){alert('Nome e data sono obbligatori.');return;}
+
+  lav.nome=nuovoNome;
+  lav.nomeEsteso=nuovoNome; // reset nomeEsteso al nome semplice
+  lav.data=nuovaData;
+  lav.tipo=document.getElementById('medit-tipo').value;
+  lav.note=document.getElementById('medit-note').value.trim();
+  lav.operatori=[...document.querySelectorAll('#medit-ops input:checked')]
+    .map(cb=>OPERATORI.find(o=>o.id===cb.value)?.nome).filter(Boolean);
+
+  _upsertLavoro(lav);
+  disegnaLavoro(lav);
+  renderTutti();
+
+  // Chiudi pulito
+  editLavGeomChanged=false;
+  editLavModalId=null;
+  document.getElementById('modal-edit-lav').classList.remove('on');
+  // Rimuovi eventuale btn-torna-modal
+  const btn=document.getElementById('btn-torna-modal'); if(btn) btn.remove();
+  showDbStatus('✅ Intervento aggiornato','ok');
+}
+
+// Override: quando terminaModifica viene chiamata dal toolbar con salva=true
+// e siamo in modalità "modifica da modal", riapri il modal
+const _terminaModificaOrig=terminaModifica;
+// Patching avviene nel click del btn-torna-modal, non serve override globale.
+
+// ── TOGGLE MAPPA ──────────────────────────────────────────────────────────────
+let mappaVisibile=true;
+function toggleMappa(){
+  mappaVisibile=!mappaVisibile;
+  const layout=document.querySelector('.layout');
+  const btn=document.getElementById('btn-toggle-map');
+  const lbl=document.getElementById('btn-toggle-map-label');
+  layout.classList.toggle('solo-schede',!mappaVisibile);
+  btn.classList.toggle('map-off',!mappaVisibile);
+  lbl.textContent=mappaVisibile?'Solo schede':'Mostra mappa';
+  // Aggiorna hint nel tab programma
+  const hmt=document.getElementById('hint-main-map-text');
+  if(hmt) hmt.style.display=mappaVisibile?'':'none';
+  const tb=document.getElementById('draw-toolbar');
+  // Se si nasconde la mappa mentre si sta disegnando, annulla
+  if(!mappaVisibile && drawMode) annullaDisegno();
+  if(mappaVisibile) setTimeout(()=>map.invalidateSize(),50);
+}
+
+// ── PUNTO EDIFICIO ────────────────────────────────────────────────────────────
+let edificioSelezionato=null; // {lat,lon,nome,indirizzo}
+
+function avviaEdificio(){
+  edificioSelezionato=null;
+  document.getElementById('edificio-query').value='';
+  document.getElementById('edificio-results').innerHTML='';
+  document.getElementById('edificio-btn-wrap').style.display='none';
+  document.getElementById('edificio-form-wrap').style.display='block';
+  hideAreas();
+  document.getElementById('hint-main').style.display='none';
+  setTimeout(()=>document.getElementById('edificio-query').focus(),100);
+}
+
+function chiudiEdificio(){
+  edificioSelezionato=null;
+  document.getElementById('edificio-btn-wrap').style.display='block';
+  document.getElementById('edificio-form-wrap').style.display='none';
+  document.getElementById('area-form').style.display='none';
+  document.getElementById('hint-main').style.display='block';
+}
+
+async function cercaEdificio(){
+  const q=document.getElementById('edificio-query').value.trim();
+  if(!q) return;
+  const res=document.getElementById('edificio-results');
+  res.innerHTML='<div style="font-size:12px;color:var(--mut);padding:8px 0"><span class="spin"></span>Ricerca…</div>';
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Castel di Lama')}&format=json&limit=6&accept-language=it&addressdetails=1`;
+    const data=await fetch(url).then(r=>r.json());
+    if(!data.length){
+      // Prova senza restrizione geografica
+      const url2=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&accept-language=it&addressdetails=1`;
+      const data2=await fetch(url2).then(r=>r.json());
+      renderEdificioResults(data2);
+    } else {
+      renderEdificioResults(data);
+    }
+  }catch(e){
+    res.innerHTML='<div style="font-size:12px;color:var(--rd);padding:8px 0">Errore di connessione.</div>';
+  }
+}
+
+function renderEdificioResults(data){
+  const res=document.getElementById('edificio-results');
+  if(!data.length){
+    res.innerHTML='<div style="font-size:12px;color:var(--mut);padding:8px 0">Nessun risultato. Prova con un indirizzo più generico.</div>';
+    return;
+  }
+  res.innerHTML=data.map((r,i)=>{
+    const nome=r.namedetails?.name||r.address?.building||r.address?.road||r.display_name.split(',')[0];
+    const addr=r.display_name;
+    return `<div class="edificio-result" onclick="selezionaEdificio(${i})" data-idx="${i}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pu)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10"/><path d="M3 9h18"/></svg>
+      <div><div class="edificio-nome">${nome}</div><div class="edificio-addr">${addr}</div></div>
+    </div>`;
+  }).join('');
+  // Salva risultati per lookup
+  window._edificioResults=data;
+}
+
+function selezionaEdificio(idx){
+  const r=window._edificioResults[idx];
+  const nome=r.namedetails?.name||r.address?.building||r.address?.road||r.display_name.split(',')[0];
+  edificioSelezionato={lat:parseFloat(r.lat),lon:parseFloat(r.lon),nome,indirizzo:r.display_name};
+  // Evidenzia selezione
+  document.querySelectorAll('.edificio-result').forEach((el,i)=>el.classList.toggle('sel',i===idx));
+  // Posiziona mappa sull'edificio se visibile
+  if(mappaVisibile){
+    map.setView([edificioSelezionato.lat,edificioSelezionato.lon],18,{animate:true});
+  }
+  // Mostra form direttamente
+  document.getElementById('edificio-form-wrap').style.display='none';
+  const geom=[{lat:edificioSelezionato.lat,lon:edificioSelezionato.lon}];
+  selectedGeom=geom; selectedIsArea=false; selectedIsPunto=true; selectedMisura=0; selectedPerimetro=0;
+  // Disegna marker temporaneo sulla mappa
+  drawn.clearLayers();
+  if(mappaVisibile){
+    L.circleMarker([edificioSelezionato.lat,edificioSelezionato.lon],{
+      radius:13,color:'#fff',weight:2.5,fillColor:'#B83025',fillOpacity:.7
+    }).addTo(drawn);
+  }
+  // Mostra form con nome pre-compilato
+  document.getElementById('hint-sel').innerHTML=`<b>🏢 ${nome}</b><br><span style="font-size:11px;color:var(--mut)">${edificioSelezionato.indirizzo}</span>`;
+  document.getElementById('f-nome').value=nome;
+  document.getElementById('f-data').value=fmtData(new Date());
+  document.getElementById('f-tipo').value='Raccolta rifiuti';
+  document.getElementById('ops-grid').innerHTML=OPERATORI.map(op=>`
+    <label class="op" id="op-${op.id}" onclick="toggleOp('${op.id}')">
+      <input type="checkbox" value="${op.id}"> ${op.nome}
+    </label>`).join('');
+  document.getElementById('f-note').value='';
+  document.getElementById('area-form').style.display='block';
+  document.getElementById('edificio-btn-wrap').style.display='none';
+}
+
+// ── SISTEMA RUOLI ────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SISTEMA RUOLI
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Ruolo corrente: null | 'cittadino' | 'operaio' | 'ufficio' | 'admin'
+let RUOLO = null;
+
+const RUOLI_CONFIG = {
+  cittadino: {
+    label: 'Cittadino',
+    icon: '👤',
+    color: '#1A4F7A',
+    bg: '#E6F0FA',
+    desc: 'Visualizza lavori e invia segnalazioni',
+    statiVisibili: ['red', 'green'],      // vede rossi e verdi, NON arancioni
+    dettagliCompleti: false,
+    puoSegnalare: true,
+    coloreSegnalazione: '#0D3B6E',        // azzurro scuro
+    labelSegnalazione: 'Segnalazione cittadino',
+    puoProgrammare: false,
+    puoRendicontare: false,
+    puoGestireSegnalazioni: false,
+    vedeSegnalazioni: false,
+  },
+  operaio: {
+    label: 'Operaio',
+    icon: '👷',
+    color: '#C94E00',
+    bg: '#FDF0E6',
+    desc: 'Gestisce lavori e invia segnalazioni',
+    statiVisibili: ['red', 'orange', 'green'],
+    dettagliCompleti: true,
+    puoSegnalare: true,
+    coloreSegnalazione: '#00B4D8',        // azzurro ciano
+    labelSegnalazione: 'Segnalazione operaio',
+    puoProgrammare: false,
+    puoRendicontare: true,
+    puoGestireSegnalazioni: false,
+    vedeSegnalazioni: false,
+  },
+  ufficio: {
+    label: 'Ufficio Tecnico',
+    icon: '🏢',
+    color: '#1E6B3C',
+    bg: '#E6F3EC',
+    desc: 'Programma, modifica e gestisce tutto',
+    statiVisibili: ['red', 'orange', 'green'],
+    dettagliCompleti: true,
+    puoSegnalare: true,
+    coloreSegnalazione: '#1E6B3C',
+    labelSegnalazione: 'Segnalazione ufficio',
+    puoProgrammare: true,
+    puoRendicontare: true,
+    puoGestireSegnalazioni: true,
+    vedeSegnalazioni: true,
+  },
+  admin: {
+    label: 'Amministratore',
+    icon: '👔',
+    color: '#7B4FA6',
+    bg: '#F3ECF9',
+    desc: 'Accesso completo in sola visualizzazione + segnalazioni',
+    statiVisibili: ['red', 'orange', 'green'],
+    dettagliCompleti: true,
+    puoSegnalare: true,
+    coloreSegnalazione: '#C2185B',        // magenta
+    labelSegnalazione: 'Segnalazione amministratore',
+    puoProgrammare: false,
+    puoRendicontare: false,
+    puoGestireSegnalazioni: false,
+    vedeSegnalazioni: true,
+  }
+};
+
+function getRuolo(){ return RUOLI_CONFIG[RUOLO] || null; }
+function can(cap){ const r=getRuolo(); return r ? r[cap] : false; }
+
+// ── GENERA CODICE 7 CIFRE ────────────────────────────────────────────────────
+function generaCodice(){
+  return String(Math.floor(Math.random()*1000000)+1).padStart(7,'0');
+}
+
+// ── SEGNALAZIONI ─────────────────────────────────────────────────────────────
+let segnalazioni = [];
+let overlaySegn = {};  // id → layer leaflet
+
+async function caricaSegnalazioni(){
+  const {data, error} = await _supa.from('segnalazioni').select('*').order('created_at',{ascending:true});
+  if(error){ console.error('Errore caricamento segnalazioni:', error); return; }
+  segnalazioni = (data||[]);
+  renderSegnalazioniMappa();
+  if(can('puoGestireSegnalazioni') || can('vedeSegnalazioni')) renderListaSegnalazioni();
+}
+
+async function salvaSegnalazione(segn){
+  const {error} = await _supa.from('segnalazioni').upsert(segn, {onConflict:'id'});
+  if(error){ showDbStatus('❌ Errore salvataggio segnalazione: '+error.message,'err'); return false; }
+  showDbStatus('✅ Segnalazione salvata','ok');
+  return true;
+}
+
+// Colore segnalazione in base alla fonte
+function coloreSegn(fonte){
+  if(fonte==='cittadino') return '#0D3B6E';
+  if(fonte==='operaio')   return '#00B4D8';
+  if(fonte==='admin')     return '#C2185B';
+  return '#555';
+}
+
+function renderSegnalazioniMappa(){
+  // Rimuovi layers esistenti
+  Object.values(overlaySegn).forEach(l=>{ try{map.removeLayer(l);}catch(e){} });
+  overlaySegn = {};
+
+  segnalazioni.forEach(s=>{
+    if(!s.geom?.length) return;
+    // Chi può vedere le segnalazioni?
+    if(!can('vedeSegnalazioni') && !can('puoGestireSegnalazioni')) return;
+
+    const c = coloreSegn(s.fonte);
+    const statoLabel = s.stato==='rifiutata'?'❌ Rifiutata':s.stato==='accettata'?'✅ Accettata':'⏳ In attesa';
+    const tooltip = `<b>#${s.codice}</b> — ${s.tipo}<br>${statoLabel}<br><i>${s.fonte||''}</i>`;
+    let l;
+    if(s.isPunto){
+      l = L.circleMarker([s.geom[0].lat, s.geom[0].lon||s.geom[0].lng], {
+        radius:10, color:'#fff', weight:2.5, fillColor:c, fillOpacity:.85,
+        dashArray: s.stato==='rifiutata'?'4,3':null
+      });
+    } else {
+      const coords = s.geom.map(p=>[p.lat, p.lon||p.lng]);
+      const dashArray = s.stato==='rifiutata'?'6,4':null;
+      l = s.isArea
+        ? L.polygon(coords, {color:c, fillColor:c, fillOpacity:.18, weight:3, dashArray})
+        : L.polyline(coords, {color:c, weight:5, opacity:.85, dashArray});
+    }
+    l.bindTooltip(tooltip, {sticky:true});
+    l.on('click', e=>{ L.DomEvent.stopPropagation(e); apriDettaglioSegn(s.id); });
+    l.addTo(map);
+    overlaySegn[s.id] = l;
+  });
+}
+
+// ── MODAL DETTAGLIO SEGNALAZIONE (per ufficio/admin) ─────────────────────────
+function apriDettaglioSegn(id){
+  const s = segnalazioni.find(x=>x.id===id);
+  if(!s) return;
+  const modal = document.getElementById('modal-segn-dettaglio');
+  const rc = RUOLI_CONFIG;
+  const colFonte = coloreSegn(s.fonte);
+  const statoColor = s.stato==='rifiutata'?'#B83025':s.stato==='accettata'?'#1E6B3C':'#C94E00';
+  const statoLabel = s.stato==='rifiutata'?'Rifiutata':s.stato==='accettata'?'Accettata':'In attesa';
+  const tipoIcona = s.isPunto?'📍':s.isArea?'🟦':'〰️';
+
+  document.getElementById('sd-codice').textContent = '#'+s.codice;
+  document.getElementById('sd-fonte').innerHTML =
+    `<span style="background:${colFonte};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${s.fonte||'—'}</span>`;
+  document.getElementById('sd-stato').innerHTML =
+    `<span style="color:${statoColor};font-weight:700">${statoLabel}</span>`;
+  document.getElementById('sd-tipo').textContent = tipoIcona+' '+s.tipo;
+  document.getElementById('sd-desc').textContent = s.descrizione||'—';
+  document.getElementById('sd-data').textContent = s.created_at ? new Date(s.created_at).toLocaleDateString('it-IT') : '—';
+
+  // Motivazione rifiuto
+  const motivDiv = document.getElementById('sd-motiv-wrap');
+  if(s.stato==='rifiutata' && s.motivazione_rifiuto){
+    document.getElementById('sd-motiv').textContent = s.motivazione_rifiuto;
+    motivDiv.style.display='block';
+  } else { motivDiv.style.display='none'; }
+
+  // Azioni (solo ufficio tecnico)
+  const azDiv = document.getElementById('sd-azioni');
+  if(can('puoGestireSegnalazioni') && s.stato==='attesa'){
+    azDiv.style.display='block';
+    azDiv.innerHTML=`
+      <div style="margin-top:14px;border-top:1px solid var(--brd);padding-top:12px">
+        <div class="mlabel">Gestisci segnalazione</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-p" style="flex:1" onclick="accettaSegn('${id}')">✅ Accetta → Arancione</button>
+          <button class="btn" style="flex:1;background:var(--rl);color:var(--rd);border:1px solid var(--rm)" onclick="apriRifiutaSegn('${id}')">❌ Rifiuta</button>
+        </div>
+      </div>`;
+  } else { azDiv.style.display='none'; }
+
+  modal.classList.add('on');
+}
+
+function chiudiDettaglioSegn(){
+  document.getElementById('modal-segn-dettaglio').classList.remove('on');
+}
+
+async function accettaSegn(id){
+  const s = segnalazioni.find(x=>x.id===id);
+  if(!s) return;
+  // Crea nuovo lavoro arancione dal segnalazione
+  const codice = generaCodice();
+  const nuovoLav = {
+    id: 'lav_'+Date.now(),
+    nome: s.tipo + (s.descrizione?' — '+s.descrizione.substring(0,40):''),
+    nomeEsteso: s.tipo,
+    data: fmtData(new Date()),
+    tipo: s.tipo,
+    note: 'Da segnalazione #'+s.codice+(s.descrizione?' — '+s.descrizione:''),
+    operatori: [],
+    stato: 'orange',
+    notaMancante: 'Da programmare',
+    daRiprogrammare: true,
+    geom: s.geom,
+    isArea: s.isArea||false,
+    isPunto: s.isPunto||false,
+    misura: s.misura||0,
+    perimetro: s.perimetro||0,
+    foto: [],
+    codice: codice,
+    codiceOrigine: null
+  };
+  lavori.push(nuovoLav);
+  await _upsertLavoro(nuovoLav);
+
+  // Aggiorna stato segnalazione
+  s.stato = 'accettata';
+  s.lav_id = nuovoLav.id;
+  await salvaSegnalazione(s);
+  segnalazioni = segnalazioni.map(x=>x.id===id?s:x);
+  renderSegnalazioniMappa();
+  renderTutti();
+  renderAllOverlays();
+  chiudiDettaglioSegn();
+  renderListaSegnalazioni();
+  showDbStatus('✅ Segnalazione accettata → lavoro #'+codice+' creato','ok');
+}
+
+let rifiutaSegnId = null;
+function apriRifiutaSegn(id){
+  rifiutaSegnId = id;
+  document.getElementById('modal-rifiuta-motiv').value='';
+  document.getElementById('modal-rifiuta').classList.add('on');
+}
+function chiudiRifiutaSegn(){
+  document.getElementById('modal-rifiuta').classList.remove('on');
+  rifiutaSegnId = null;
+}
+async function confermaRifiuta(){
+  const motiv = document.getElementById('modal-rifiuta-motiv').value.trim();
+  if(!motiv){ alert('Inserisci una motivazione.'); return; }
+  const s = segnalazioni.find(x=>x.id===rifiutaSegnId);
+  if(!s) return;
+  s.stato = 'rifiutata';
+  s.motivazione_rifiuto = motiv;
+  await salvaSegnalazione(s);
+  segnalazioni = segnalazioni.map(x=>x.id===rifiutaSegnId?s:x);
+  renderSegnalazioniMappa();
+  chiudiDettaglioSegn();
+  chiudiRifiutaSegn();
+  renderListaSegnalazioni();
+  showDbStatus('✅ Segnalazione rifiutata','ok');
+}
+
+// ── FORM SEGNALAZIONE CITTADINO/OPERAIO/ADMIN ────────────────────────────────
+let segnGeom=null, segnIsArea=false, segnIsPunto=false, segnMisura=0, segnPerimetro=0;
+let modalSegnMode=false; // true = sto raccogliendo geometria per una segnalazione
+
+function avviaSegnalazione(){
+  modalSegnMode=true;
+  // Riusa il sistema di disegno base → dopo completaDisegno intercettiamo
+  document.getElementById('panel-segn-form').style.display='none';
+  document.getElementById('hint-segn').style.display='block';
+  // Mostra toolbar normale che è già lì
+  switchTab('segn');
+}
+
+function resetSegnForm(){
+  segnGeom=null; segnIsArea=false; segnIsPunto=false; segnMisura=0; segnPerimetro=0;
+  // Rimane in modalità segnalazione: l'utente può ridisegnare
+  modalSegnMode=true;
+  document.getElementById('hint-segn').style.display='block';
+  document.getElementById('panel-segn-form').style.display='none';
+  if(drawn) drawn.clearLayers();
+  // Assicura toolbar visibile
+  const dt=document.getElementById('draw-toolbar');
+  if(dt) dt.style.display='flex';
+}
+
+async function salvaSegnalazioneForm(){
+  const tipo = document.getElementById('segn-tipo').value;
+  const desc = document.getElementById('segn-desc').value.trim();
+  if(!segnGeom){ alert('Disegna prima la zona sulla mappa.'); return; }
+  const r = getRuolo();
+  const codice = generaCodice();
+  const segn = {
+    id: 'segn_'+Date.now(),
+    codice,
+    fonte: RUOLO,
+    tipo,
+    descrizione: desc,
+    stato: 'attesa',
+    geom: segnGeom,
+    isArea: segnIsArea,
+    isPunto: segnIsPunto,
+    misura: segnMisura,
+    perimetro: segnPerimetro,
+    motivazione_rifiuto: null,
+    lav_id: null,
+    created_at: new Date().toISOString()
+  };
+  const ok = await salvaSegnalazione(segn);
+  if(!ok) return;
+  segnalazioni.push(segn);
+  renderSegnalazioniMappa();
+  resetSegnForm();
+  // Mostra codice al cittadino
+  mostraCodiceRicevuta(codice);
+}
+
+function mostraCodiceRicevuta(codice){
+  const modal = document.getElementById('modal-codice-ricevuta');
+  document.getElementById('ricevuta-codice').textContent = '#'+codice;
+  modal.classList.add('on');
+}
+function chiudiRicevuta(){
+  document.getElementById('modal-codice-ricevuta').classList.remove('on');
+}
+
+// ── RICERCA PER CODICE ────────────────────────────────────────────────────────
+async function cercaCodice(){
+  const val = document.getElementById('cerca-codice-input').value.trim().replace('#','').padStart(7,'0');
+  if(val.length<7){ alert('Inserisci un codice valido.'); return; }
+  const risultati = document.getElementById('cerca-codice-risultati');
+
+  // Cerca nei lavori
+  const lavMatch = lavori.filter(l=>l.codice===val);
+  // Cerca nelle segnalazioni (solo se visibili al ruolo)
+  const segnMatch = (can('vedeSegnalazioni')||can('puoGestireSegnalazioni'))
+    ? segnalazioni.filter(s=>s.codice===val)
+    : segnalazioni.filter(s=>s.codice===val); // tutti possono cercare il proprio codice
+
+  if(!lavMatch.length && !segnMatch.length){
+    risultati.innerHTML='<div class="empty">Nessun risultato per il codice <b>#'+val+'</b>.</div>';
+    return;
+  }
+
+  let html='';
+  segnMatch.forEach(s=>{
+    const statoColor = s.stato==='rifiutata'?'var(--rd)':s.stato==='accettata'?'var(--gr)':'var(--or)';
+    const statoLabel = s.stato==='rifiutata'?'Rifiutata':s.stato==='accettata'?'Accettata':'In attesa';
+    html+=`<div class="lcard">
+      <div class="lh"><div class="lname">📋 Segnalazione #${s.codice}</div>
+        <span class="badge" style="background:var(--bg);color:${statoColor};border:1px solid">${statoLabel}</span></div>
+      <div class="lmeta">🔧 ${s.tipo}<br>📅 ${s.created_at?new Date(s.created_at).toLocaleDateString('it-IT'):'—'}</div>
+      ${s.descrizione?`<div style="font-size:11px;color:var(--mut);margin-top:3px">📝 ${s.descrizione}</div>`:''}
+      ${s.stato==='rifiutata'&&s.motivazione_rifiuto?`<div class="lnota">❌ Motivazione rifiuto: ${s.motivazione_rifiuto}</div>`:''}
+      ${s.lav_id?`<div style="font-size:11px;color:var(--gr);margin-top:3px">✅ Trasformata in lavoro</div>`:''}
+    </div>`;
+  });
+  lavMatch.forEach(l=>{
+    const bc=l.stato==='green'?'bgr':l.stato==='orange'?'bor':'brd2';
+    const bl=l.stato==='green'?'Completato':l.stato==='orange'?'Parziale':'In programma';
+    html+=`<div class="lcard" onclick="zoomLav('${l.id}')" style="cursor:pointer">
+      <div class="lh"><div class="lname">${l.isPunto?'📍':l.isArea?'🟦':'〰️'} ${l.nomeEsteso||l.nome}</div>
+        <span class="badge ${bc}">${bl}</span></div>
+      <div class="lmeta">📅 ${l.data||'—'} · ${l.tipo}</div>
+      ${l.codiceOrigine?`<div style="font-size:11px;color:var(--mut)">🔗 Origine: #${l.codiceOrigine}</div>`:''}
+      ${l.notaMancante?`<div class="lnota">⚠️ ${l.notaMancante}</div>`:''}
+    </div>`;
+  });
+  risultati.innerHTML=html;
+}
+
+// ── RENDER LISTA SEGNALAZIONI (per ufficio + admin) ───────────────────────────
+function renderListaSegnalazioni(){
+  const cont = document.getElementById('list-segnalazioni');
+  if(!cont) return;
+  const filtro = document.getElementById('filtro-segn-stato')?.value||'tutte';
+  let lista = segnalazioni;
+  if(filtro!=='tutte') lista = lista.filter(s=>s.stato===filtro);
+
+  if(!lista.length){
+    cont.innerHTML='<div class="empty">Nessuna segnalazione.</div>';
+    return;
+  }
+  cont.innerHTML = lista.map(s=>{
+    const c = coloreSegn(s.fonte);
+    const statoColor = s.stato==='rifiutata'?'var(--rd)':s.stato==='accettata'?'var(--gr)':'var(--or)';
+    const statoLabel = s.stato==='rifiutata'?'Rifiutata':s.stato==='accettata'?'Accettata':'⏳ In attesa';
+    const fonteLabel = RUOLI_CONFIG[s.fonte]?.label||s.fonte||'—';
+    const tipoIcona = s.isPunto?'📍':s.isArea?'🟦':'〰️';
+    return `<div class="lcard" style="border-left:4px solid ${c}">
+      <div class="lh">
+        <div class="lname">${tipoIcona} <span style="font-family:'DM Mono';font-size:12px;color:${c}">#${s.codice}</span> — ${s.tipo}</div>
+        <span class="badge" style="background:var(--bg);color:${statoColor};border:1px solid currentColor;font-size:10px">${statoLabel}</span>
+      </div>
+      <div class="lmeta">
+        <span style="background:${c};color:#fff;padding:1px 7px;border-radius:10px;font-size:10px">${fonteLabel}</span>
+        · 📅 ${s.created_at?new Date(s.created_at).toLocaleDateString('it-IT'):'—'}
+      </div>
+      ${s.descrizione?`<div style="font-size:11px;color:var(--mut);margin-top:4px">📝 ${s.descrizione}</div>`:''}
+      ${s.stato==='rifiutata'&&s.motivazione_rifiuto?`<div class="lnota">❌ ${s.motivazione_rifiuto}</div>`:''}
+      <div class="lacts" onclick="event.stopPropagation()">
+        <button class="lb lbm" onclick="zoomSegn('${s.id}')">🗺 Mappa</button>
+        ${can('puoGestireSegnalazioni')&&s.stato==='attesa'
+          ?`<button class="lb lbg" onclick="accettaSegn('${s.id}')">✅ Accetta</button>
+             <button class="lb lbr" onclick="apriRifiutaSegn('${s.id}')">❌ Rifiuta</button>`
+          :''}
+        <button class="lb lbm" onclick="apriDettaglioSegn('${s.id}')">👁 Dettaglio</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function zoomSegn(id){
+  const s = segnalazioni.find(x=>x.id===id);
+  if(!s||!s.geom?.length) return;
+  if(s.isPunto){
+    map.setView([s.geom[0].lat, s.geom[0].lon||s.geom[0].lng], 17, {animate:true});
+  } else {
+    const coords = s.geom.map(p=>[p.lat, p.lon||p.lng]);
+    map.fitBounds(L.latLngBounds(coords), {padding:[60,60]});
+  }
+}
+
+// ── INTERCETTA DISEGNO PER SEGNALAZIONI ────────────────────────────────────────
+// Override di gestisciDisegnoCompletato per distinguere lavori da segnalazioni
+const _gestisciDisegnoCompletatoOrig = gestisciDisegnoCompletato;
+gestisciDisegnoCompletato = async function(geom, isArea, isPunto=false){
+  if(modalSegnMode){
+    // Siamo in modalità segnalazione
+    drawn.clearLayers();
+    segnIsArea=isArea; segnIsPunto=isPunto;
+    const r=getRuolo();
+    const c=r.coloreSegnalazione||'#0D3B6E';
+    if(isPunto){
+      segnGeom=geom; segnMisura=0; segnPerimetro=0;
+      L.circleMarker([geom[0].lat,geom[0].lon],{radius:10,color:'#fff',weight:2.5,fillColor:c,fillOpacity:.85}).addTo(drawn);
+    } else if(isArea){
+      const gd=densificaA10m(geom,25);
+      segnGeom=gd; segnMisura=calcolaArea(gd); segnPerimetro=calcolaLunghezza(gd);
+      L.polygon(gd.map(p=>[p.lat,p.lon]),{color:c,fillOpacity:.15,weight:3}).addTo(drawn);
+    } else {
+      const gd=densificaA10m(geom,25);
+      segnGeom=gd; segnMisura=calcolaLunghezza(gd); segnPerimetro=0;
+      L.polyline(gd.map(p=>[p.lat,p.lon]),{color:c,weight:5}).addTo(drawn);
+    }
+    document.getElementById('hint-segn').style.display='none';
+    document.getElementById('panel-segn-form').style.display='block';
+    return;
+  }
+  return _gestisciDisegnoCompletatoOrig(geom, isArea, isPunto);
+}
+
+// ── APPLY RUOLO: mostra/nascondi elementi UI in base al ruolo ─────────────────
+function applyRuolo(){
+  const r = getRuolo();
+  if(!r) return;
+
+  // Header badge ruolo
+  document.getElementById('ruolo-badge').innerHTML=
+    `<span style="background:${r.color};color:#fff;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer" onclick="tornaSceltaRuolo()" title="Cambia ruolo">${r.icon} ${r.label}</span>`;
+
+  // Migra btn (solo ufficio)
+  const migBtn = document.querySelector('button[onclick="migraLocalStorage()"]');
+  if(migBtn) migBtn.style.display = RUOLO==='ufficio'?'':'none';
+
+  // Toolbar disegno mappa: solo chi può programmare o segnalare
+  const drawTb = document.getElementById('draw-toolbar');
+  if(drawTb){
+    if(r.puoProgrammare){
+      // Toolbar piena
+      drawTb.style.display='flex';
+    } else if(r.puoSegnalare){
+      // Solo il tab segnalazione gestirà il disegno
+      drawTb.style.display='none'; // nascosta normalmente, appare nel tab segn
+    } else {
+      drawTb.style.display='none';
+    }
+  }
+
+  // Tab "Programma" → solo ufficio
+  const tabProg = document.querySelector('.ptab[data-tab="prog"]');
+  if(tabProg) tabProg.style.display = r.puoProgrammare ? '' : 'none';
+
+  // Tab "Parziali" → non visibile al cittadino (non vede arancioni)
+  const tabParziali = document.querySelector('.ptab[data-tab="parziali"]');
+  if(tabParziali) tabParziali.style.display = r.statiVisibili.includes('orange') ? '' : 'none';
+
+  // Tab "Da fare" → rinomina per cittadino
+  const tabDaFare = document.querySelector('.ptab[data-tab="da-fare"]');
+  if(tabDaFare && RUOLO==='cittadino') tabDaFare.innerHTML = '🔴 In programma <span id="cnt-df" class="badge brd2" style="margin-left:2px">'+document.getElementById("cnt-df").textContent+'</span>';
+
+  // Tab stampa: solo ufficio (rimuoviamo il bottone stampa PDF per altri)
+  const btnStampa = document.getElementById('btn-stampa-df');
+  if(btnStampa) btnStampa.style.display = r.puoProgrammare ? '' : 'none';
+
+  // Tab "Segnalazioni" → ufficio + admin vedono la lista; altri vedono il form
+  const tabSegn = document.querySelector('.ptab[data-tab="segn"]');
+  if(tabSegn) tabSegn.style.display = (r.puoSegnalare || r.vedeSegnalazioni || r.puoGestireSegnalazioni) ? '' : 'none';
+
+  // Tab "Cerca Codice" → sempre visibile
+  // (già nella lista tab)
+
+  // Bottone toggle mappa
+  const toggleBtn = document.getElementById('btn-toggle-map');
+  if(toggleBtn) toggleBtn.style.display='';
+
+  // Se il ruolo non può programmare, avvia sul tab da-fare o completati
+  if(!r.puoProgrammare){
+    // Default tab dipende dal ruolo
+    if(RUOLO==='cittadino') switchTab('completati');
+    else switchTab('da-fare');
+  } else {
+    switchTab('prog');
+  }
+
+  // Aggiorna legend per mostrare solo i colori visibili al ruolo
+  aggiornaLegenda();
+
+  // Carica segnalazioni se utente le può vedere
+  if(r.vedeSegnalazioni || r.puoGestireSegnalazioni){
+    caricaSegnalazioni();
+  } else if(r.puoSegnalare){
+    // Anche chi segnala deve caricare per non duplicare
+    caricaSegnalazioni();
+  }
+
+  // Aggiorna contatori badge segnalazioni
+  aggiornaCounterSegn();
+}
+
+function aggiornaCounterSegn(){
+  const attesa = segnalazioni.filter(s=>s.stato==='attesa').length;
+  const badge = document.getElementById('cnt-segn');
+  if(badge){
+    badge.textContent = attesa||'';
+    badge.style.display = attesa?'':'none';
+  }
+}
+
+function aggiornaLegenda(){
+  const r = getRuolo(); if(!r) return;
+  // Mostra/nascondi voci legenda in base agli stati visibili
+  const map_stati = {red:'leg-red', orange:'leg-orange', green:'leg-green'};
+  Object.entries(map_stati).forEach(([stato, id])=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = r.statiVisibili.includes(stato)?'':'none';
+  });
+  // Legenda segnalazioni
+  const legSegn = document.getElementById('leg-segnalazioni');
+  if(legSegn) legSegn.style.display = (r.vedeSegnalazioni||r.puoGestireSegnalazioni)?'':'none';
+}
+
+// ── CARDHTML ADATTATA AL RUOLO ────────────────────────────────────────────────
+function cardHTMLRuolo(lav){
+  const r = getRuolo();
+  // Cittadino: scheda sintetica senza operatori e senza azioni modifica
+  if(RUOLO==='cittadino'){
+    const bc=lav.stato==='green'?'bgr':'brd2'; // solo verde o rosso
+    const bl=lav.stato==='green'?'Completato':'In programma';
+    const tipoIcon=lav.isPunto?'📍':lav.isArea?'🟦':'〰️';
+    const codiceHtml=lav.codice?`<div style="font-family:'DM Mono';font-size:10px;color:var(--mut)">#${lav.codice}</div>`:'';
+    return `<div class="lcard" id="card-${lav.id}" onclick="zoomLav('${lav.id}')" style="cursor:pointer">
+      <div class="lh"><div class="lname">${tipoIcon} ${lav.nomeEsteso||lav.nome}</div><span class="badge ${bc}">${bl}</span></div>
+      ${codiceHtml}
+      <div class="lmeta">📅 ${lav.data||'—'} · ${lav.tipo}</div>
+      ${lav.foto?.length?`<div class="card-fotos">${lav.foto.map(f=>`<img src="${f}" onclick="openLightbox('${f}')">`).join('')}</div>`:''}
+    </div>`;
+  }
+
+  // Admin: scheda completa ma senza azioni di modifica
+  if(RUOLO==='admin'){
+    const bc=lav.stato==='green'?'bgr':lav.stato==='orange'?'bor':'brd2';
+    const bl=lav.stato==='green'?'Completato':lav.stato==='orange'?'Parziale':'In programma';
+    const tipoIcon=lav.isPunto?'📍':lav.isArea?'🟦':'〰️';
+    const codiceHtml=lav.codice?`<div style="font-family:'DM Mono';font-size:10px;color:var(--mut);margin-bottom:2px">#${lav.codice}</div>`:'';
+    return `<div class="lcard" id="card-${lav.id}" onclick="zoomLav('${lav.id}')" style="cursor:pointer">
+      <div class="lh"><div class="lname">${tipoIcon} ${lav.nomeEsteso||lav.nome}</div><span class="badge ${bc}">${bl}</span></div>
+      ${codiceHtml}
+      <div class="lmeta">📅 ${lav.data||'—'} · ${lav.tipo}<br>👷 ${lav.operatori?.join(', ')||'—'}</div>
+      ${(!lav.isPunto&&lav.misura)?`<div class="lmisura">${formatMisura(lav)}</div>`:''}
+      ${lav.note?`<div style="font-size:11px;color:var(--mut);margin-bottom:3px">📝 ${lav.note}</div>`:''}
+      ${lav.notaMancante?`<div class="lnota">⚠️ ${lav.notaMancante}</div>`:''}
+      ${lav.foto?.length?`<div class="card-fotos">${lav.foto.map(f=>`<img src="${f}" onclick="openLightbox('${f}')">`).join('')}</div>`:''}
+      ${lav.codiceOrigine?`<div style="font-size:11px;color:var(--mut)">🔗 Origine: #${lav.codiceOrigine}</div>`:''}
+    </div>`;
+  }
+
+  // Operaio: scheda completa + solo azione rendicontazione, no modifica programmazione
+  if(RUOLO==='operaio'){
+    const bc=lav.stato==='green'?'bgr':lav.stato==='orange'?'bor':'brd2';
+    const bl=lav.stato==='green'?'Completato':lav.stato==='orange'?'Parziale':'In programma';
+    const tipoIcon=lav.isPunto?'📍':lav.isArea?'🟦':'〰️';
+    const codiceHtml=lav.codice?`<div style="font-family:'DM Mono';font-size:10px;color:var(--mut);margin-bottom:2px">#${lav.codice}</div>`:'';
+    const mostraBtn = lav.stato!=='green'; // non rendicontare già completati
+    return `<div class="lcard" id="card-${lav.id}" onclick="zoomLav('${lav.id}')" style="cursor:pointer">
+      <div class="lh"><div class="lname">${tipoIcon} ${lav.nomeEsteso||lav.nome}</div><span class="badge ${bc}">${bl}</span></div>
+      ${codiceHtml}
+      <div class="lmeta">📅 ${lav.data||'—'} · ${lav.tipo}<br>👷 ${lav.operatori?.join(', ')||'—'}</div>
+      ${(!lav.isPunto&&lav.misura)?`<div class="lmisura">${formatMisura(lav)}</div>`:''}
+      ${lav.note?`<div style="font-size:11px;color:var(--mut);margin-bottom:3px">📝 ${lav.note}</div>`:''}
+      ${lav.notaMancante?`<div class="lnota">⚠️ ${lav.notaMancante}</div>`:''}
+      ${lav.foto?.length?`<div class="card-fotos">${lav.foto.map(f=>`<img src="${f}" onclick="openLightbox('${f}')">`).join('')}</div>`:''}
+      ${mostraBtn?`<div class="lacts" onclick="event.stopPropagation()">
+        <button class="lb lbg" onclick="apriModalOperaio('${lav.id}')">📋 Rendiconta</button>
+      </div>`:''}
+    </div>`;
+  }
+
+  // Ufficio: scheda completa con tutte le azioni (comportamento originale)
+  return cardHTML(lav);
+}
+
+// ── MODAL RENDICONTAZIONE OPERAIO ─────────────────────────────────────────────
+let modalOperaioId=null, modalOperaioFotos=[];
+
+function apriModalOperaio(id){
+  const lav=lavori.find(l=>l.id===id); if(!lav) return;
+  modalOperaioId=id; modalOperaioFotos=[];
+  document.getElementById('mop-sub').textContent=(lav.nomeEsteso||lav.nome)+' · '+lav.data;
+  document.getElementById('mop-stato').value='green';
+  document.getElementById('mop-nota').value='';
+  document.getElementById('mop-nota-wrap').style.display='none';
+  document.getElementById('mop-foto-grid').innerHTML='';
+  document.getElementById('modal-operaio').classList.add('on');
+}
+function chiudiModalOperaio(){
+  document.getElementById('modal-operaio').classList.remove('on');
+  modalOperaioId=null; modalOperaioFotos=[];
+}
+function toggleModalOperaioStato(){
+  const v=document.getElementById('mop-stato').value;
+  document.getElementById('mop-nota-wrap').style.display=(v==='orange'||v==='non_svolto')?'block':'none';
+}
+function aggFotoOperaio(e){
+  [...e.target.files].forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>compressImg(ev.target.result,800,b64=>{
+      modalOperaioFotos.push(b64);
+      renderFotoGridOperaio();
+    });
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+}
+function renderFotoGridOperaio(){
+  document.getElementById('mop-foto-grid').innerHTML=
+    modalOperaioFotos.map((f,i)=>`
+      <div class="foto-thumb" style="outline:2px solid var(--gm)">
+        <img src="${f}" onclick="openLightbox('${f}')">
+        <button class="df" onclick="modalOperaioFotos.splice(${i},1);renderFotoGridOperaio()">✕</button>
+      </div>`).join('');
+}
+async function salvaRendicontazioneOperaio(){
+  const lav=lavori.find(l=>l.id===modalOperaioId); if(!lav) return;
+  const stato=document.getElementById('mop-stato').value;
+  const nota=document.getElementById('mop-nota').value.trim();
+
+  if(stato==='non_svolto'){
+    if(!nota){ alert('Inserisci la motivazione del mancato svolgimento.'); return; }
+    lav.stato='orange';
+    lav.notaMancante='Non svolto: '+nota;
+    lav.daRiprogrammare=true;
+    lav.foto=[...(lav.foto||[]),...modalOperaioFotos];
+    await _upsertLavoro(lav);
+    disegnaLavoro(lav);
+    renderTutti();
+    chiudiModalOperaio();
+    showDbStatus('✅ Lavoro segnato come non svolto → da riprogrammare','ok');
+  } else {
+    // Usa il modale standard per completato/parziale
+    chiudiModalOperaio();
+    // Pre-popola il modal consuntivo
+    modalId=modalOperaioId; modalFotos=[...modalOperaioFotos];
+    document.getElementById('msub').textContent=(lav.nomeEsteso||lav.nome)+' · '+lav.data;
+    document.getElementById('mstato').value=stato;
+    document.getElementById('mnota').value=nota;
+    renderFotoGrid();
+    toggleModalParziale();
+    document.getElementById('modal').classList.add('on');
+  }
+}
+
+// ── INTERCETTA renderFiltrato PER FILTRARE PER RUOLO ─────────────────────────
+const _renderFiltratoOrig = renderFiltrato;
+renderFiltrato = function(tab){
+  const r = getRuolo();
+  // Filtra lavori per stati visibili al ruolo
+  if(r && typeof lavori!=='undefined'){
+    const origLavori = [...lavori];
+    // Applica filtro stati
+    const lavFiltrati = lavori.filter(l=>r.statiVisibili.includes(l.stato));
+    // Patch temporanea: override del vettore globale durante il render
+    lavori.length=0; lavFiltrati.forEach(l=>lavori.push(l));
+    _renderFiltratoOrig(tab);
+    lavori.length=0; origLavori.forEach(l=>lavori.push(l));
+  } else {
+    _renderFiltratoOrig(tab);
+  }
+}
+
+// Override cardHTML per usare la versione con ruoli
+const _cardHTMLOrig = cardHTML;
+cardHTML = function(lav){
+  return cardHTMLRuolo(lav);
+};
+
+// ── TORNA ALLA SCELTA RUOLO ───────────────────────────────────────────────────
+function tornaSceltaRuolo(){
+  RUOLO=null;
+  segnalazioni=[];
+  Object.values(overlaySegn).forEach(l=>{try{map.removeLayer(l);}catch(e){}});
+  overlaySegn={};
+  document.getElementById('role-screen').style.display='flex';
+  document.getElementById('main-app').style.display='none';
+}
+
+
+
+// ── AVVIO: mostra schermata selezione ruolo ───────────────────────────────────
+async function selezionaRuolo(ruolo){
+  RUOLO = ruolo;
+  document.getElementById('role-screen').style.display='none';
+  document.getElementById('main-app').style.display='flex';
+  document.getElementById('main-app').style.flexDirection='column';
+  document.getElementById('main-app').style.height='100dvh';
+
+  // ── INIT MAPPA (solo al primo accesso; al cambio ruolo ricicla l'istanza) ──
+  if(!map){
+    map = L.map('map',{layers:[tileOSM]}).setView([42.8697,13.7133],17);
+    drawn       = new L.FeatureGroup().addTo(map);
+    drawnTaglio = new L.FeatureGroup().addTo(map);
+    editLayer   = L.layerGroup().addTo(map);
+  } else {
+    map.invalidateSize();
+    map.setView([42.8697,13.7133],17);
+  }
+  await new Promise(r=>setTimeout(r,120));
+  map.invalidateSize();
+  map.setView([42.8697,13.7133],17);
+
+  // Carica dati e applica ruolo
+  await caricaDaSupabase();
+  applyRuolo();
+  aggiornaToolbarDisegno();
+  iniziaFiltri();
+  setTimeout(()=>map.invalidateSize(), 400);
+}
+
+// Funzione per cercare codice dalla schermata guest
+async function cercaCodiceGuest(){
+  const val = document.getElementById('cerca-codice-guest').value.trim().replace('#','').padStart(7,'0');
+  if(val.length<7){ alert('Inserisci un codice valido (7 cifre).'); return; }
+  const risultati = document.getElementById('cerca-codice-guest-risultati');
+  risultati.innerHTML='<div style="font-size:12px;color:var(--mut);padding:8px 0"><span class="spin"></span>Ricerca…</div>';
+  
+  const {data:lavData} = await _supa.from('lavori').select('id,nome,nome_esteso,data,tipo,stato,nota_mancante,codice,codice_origine').eq('codice',val);
+  const {data:segnData} = await _supa.from('segnalazioni').select('*').eq('codice',val);
+  
+  const lavMatch = lavData||[];
+  const segnMatch = segnData||[];
+  
+  if(!lavMatch.length && !segnMatch.length){
+    risultati.innerHTML='<div style="font-size:13px;color:var(--mut);padding:8px 0">Nessun risultato per il codice <b>#'+val+'</b>.</div>';
+    return;
+  }
+  let html='';
+  segnMatch.forEach(s=>{
+    const statoColor=s.stato==='rifiutata'?'#B83025':s.stato==='accettata'?'#1E6B3C':'#C94E00';
+    const statoLabel=s.stato==='rifiutata'?'Rifiutata':s.stato==='accettata'?'Accettata':'In attesa';
+    html+='<div style="border:1px solid var(--brd);border-radius:9px;padding:12px;margin-bottom:8px;background:#fff">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span style="font-family:DM Mono;font-weight:700;font-size:15px">#'+s.codice+'</span>'+
+      '<span style="color:'+statoColor+';font-weight:700;font-size:12px">'+statoLabel+'</span></div>'+
+      '<div style="font-size:12px;color:var(--mut)">🔧 '+s.tipo+'</div>'+
+      (s.descrizione?'<div style="font-size:12px;color:var(--mut);margin-top:4px">📝 '+s.descrizione+'</div>':'') +
+      (s.stato==='rifiutata'&&s.motivazione_rifiuto?'<div style="font-size:12px;color:#B83025;margin-top:6px;background:var(--rl);padding:6px 8px;border-radius:6px">❌ '+s.motivazione_rifiuto+'</div>':'') +
+      '</div>';
+  });
+  lavMatch.forEach(l=>{
+    const statoLabel=l.stato==='green'?'Completato':l.stato==='orange'?'Parziale':'In programma';
+    const statoColor=l.stato==='green'?'#1E6B3C':l.stato==='orange'?'#C94E00':'#B83025';
+    html+='<div style="border:1px solid var(--brd);border-radius:9px;padding:12px;margin-bottom:8px;background:#fff">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span style="font-weight:700">'+( l.nome_esteso||l.nome )+'</span>'+
+      '<span style="color:'+statoColor+';font-weight:700;font-size:12px">'+statoLabel+'</span></div>'+
+      '<div style="font-size:12px;color:var(--mut)">📅 '+( l.data||'—' )+' · '+l.tipo+'</div>'+
+      (l.nota_mancante?'<div style="font-size:12px;color:var(--or);margin-top:4px">⚠️ '+l.nota_mancante+'</div>':'') +
+      (l.codice_origine?'<div style="font-size:11px;color:var(--mut);margin-top:4px">🔗 Origine: #'+l.codice_origine+'</div>':'') +
+      '</div>';
+  });
+  risultati.innerHTML=html;
+}
+
+// ── avviaDisegnoPer: mantenuta per compatibilità ma ora inutilizzata nel tab segn
+function avviaDisegnoPer(target, tipo){
+  if(target==='segn') modalSegnMode=true;
+  avviaDisegno(tipo);
+}
+
+// Override switchTab to handle new tabs
+const _switchTabOrig = switchTab;
+switchTab = function(t){
+  const allTabs = ['prog','da-fare','parziali','completati','segn','cerca'];
+  document.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
+  allTabs.forEach(id=>{
+    const el=document.getElementById('tab-'+id);
+    if(!el) return;
+    if(id===t){ el.style.display=(id==='prog'||id==='segn'||id==='cerca')?'block':'flex'; }
+    else { el.style.display='none'; }
+  });
+  // Segn tab: mostra sezioni appropriate al ruolo + draw-toolbar sulla mappa
+  if(t==='segn' && RUOLO){
+    const r=getRuolo();
+    const formSection=document.getElementById('segn-sezione-form');
+    const listaSection=document.getElementById('segn-sezione-lista');
+    if(formSection) formSection.style.display=r.puoSegnalare?'block':'none';
+    if(listaSection){
+      listaSection.style.display=(r.vedeSegnalazioni||r.puoGestireSegnalazioni)?'block':'none';
+      if(r.vedeSegnalazioni||r.puoGestireSegnalazioni) renderListaSegnalazioni();
+    }
+    // Mostra draw-toolbar sulla mappa per chi può segnalare
+    // e imposta subito modalSegnMode so che il prossimo disegno va in segnalazione
+    const dt=document.getElementById('draw-toolbar');
+    if(dt && r.puoSegnalare){
+      dt.style.display='flex';
+      modalSegnMode=true; // qualsiasi disegno fatto ora è una segnalazione
+    }
+  }
+  // Uscendo dal tab segn: nascondi toolbar (se non è ufficio) e reset modalSegnMode
+  if(t!=='segn'){
+    modalSegnMode=false;
+    if(RUOLO && getRuolo && !getRuolo().puoProgrammare){
+      const dt=document.getElementById('draw-toolbar');
+      if(dt) dt.style.display='none';
+    }
+  }
+  // Tab prog (ufficio): mostra toolbar
+  if(t==='prog' && RUOLO && getRuolo().puoProgrammare){
+    modalSegnMode=false;
+    const dt=document.getElementById('draw-toolbar');
+    if(dt) dt.style.display='flex';
+  }
+  setTimeout(aggiornaMappaGlobale, 0);
+}
+
+// Patch caricaDaSupabase to also assign codici to existing lavori without one
+const _caricaDaSupabaseOrig = caricaDaSupabase;
+caricaDaSupabase = async function(){
+  await _caricaDaSupabaseOrig();
+  // Assign codici to lavori that don't have one (migration)
+  let changed=false;
+  for(const lav of lavori){
+    if(!lav.codice){
+      lav.codice=generaCodice();
+      changed=true;
+    }
+  }
+  if(changed){
+    showDbStatus('⏳ Assegnazione codici…','info');
+    await Promise.all(lavori.filter(l=>l.codice).map(l=>_upsertLavoro(l)));
+    showDbStatus('✅ Codici assegnati','ok');
+  }
+}
+
+// Patch salvaLavoro to include codice
+const _salvaLavoroOrig = salvaLavoro;
+salvaLavoro = function(){
+  // Inject codice before saving
+  const origPush = Array.prototype.push;
+  // Instead: patch lavToRow to include codice
+  // We'll add it to the lav object in salvaLavoro override
+  const nome=document.getElementById('f-nome').value.trim();
+  const data=document.getElementById('f-data').value;
+  if(!nome||!data){alert('Inserisci nome e data.');return;}
+  const ops=[...document.querySelectorAll('.op input:checked')]
+    .map(cb=>OPERATORI.find(o=>o.id===cb.value)?.nome).filter(Boolean);
+  const lav={
+    id:'lav_'+Date.now(),nome,data,
+    nomeEsteso:'',
+    tipo:document.getElementById('f-tipo').value,
+    note:document.getElementById('f-note').value.trim(),
+    operatori:ops,stato:'red',notaMancante:'',
+    geom:selectedGeom,isArea:selectedIsArea,isPunto:selectedIsPunto,
+    misura:selectedMisura,
+    perimetro:selectedPerimetro,
+    foto:[],
+    codice:generaCodice(),
+    codiceOrigine:null
+  };
+  lavori.push(lav);
+  _upsertLavoro(lav);
+  drawn.clearLayers();
+  disegnaLavoro(lav);
+  renderTutti();
+  resetDisegno();
+  switchTab('da-fare');
+}
+
+// Patch confermaParziale to assign new codici to split parts
+const _confermaParziale_postHook = confermaParziale;
+
+// Patch lavToRow to include codice fields
+const _lavToRowOrig = lavToRow;
+lavToRow = function(lav){
+  const row = _lavToRowOrig(lav);
+  row.codice = lav.codice||null;
+  row.codice_origine = lav.codiceOrigine||null;
+  return row;
+}
+
+// Patch rowToLav to include codice fields
+const _rowToLavOrig = rowToLav;
+rowToLav = function(row){
+  const lav = _rowToLavOrig(row);
+  lav.codice = row.codice||null;
+  lav.codiceOrigine = row.codice_origine||null;
+  return lav;
+}
+
+document.getElementById('hdate').textContent=new Date().toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+</script>
+</body>
+</html>
